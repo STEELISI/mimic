@@ -1,0 +1,4 @@
+/users/sunshine/mimic-generator/CMakeFiles/rebuild_cache.dir
+/users/sunshine/mimic-generator/CMakeFiles/edit_cache.dir
+/users/sunshine/mimic-generator/CMakeFiles/mimiclib.dir
+/users/sunshine/mimic-generator/CMakeFiles/mimic.dir

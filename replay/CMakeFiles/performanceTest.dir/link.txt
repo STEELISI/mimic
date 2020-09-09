@@ -1,0 +1,1 @@
+/usr/bin/clang++  -Wall -g --std=gnu++2a --stdlib=libc++ -DASIO_STANDALONE  -rdynamic CMakeFiles/performanceTest.dir/src/performanceTests.cpp.o  -o performanceTest -lpthread libmimiclib.a 

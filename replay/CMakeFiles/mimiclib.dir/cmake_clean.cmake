@@ -2,7 +2,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o"
   "CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o"
   "CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o"
-  "CMakeFiles/mimiclib.dir/src/event.cpp.o"
   "CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o"
   "CMakeFiles/mimiclib.dir/src/mimic.cpp.o"
   "CMakeFiles/mimiclib.dir/src/connections.cpp.o"

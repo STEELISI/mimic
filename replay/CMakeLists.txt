@@ -3,7 +3,7 @@ project (mimic)
 find_package (Threads)
 
 include_directories("include")
-add_library(mimiclib STATIC src/pollHandler.cpp src/eventNotifier.cpp src/eventQueue.cpp src/event.cpp src/eventHandler.cpp src/mimic.cpp src/connections.cpp  src/fileWorker.cpp)
+add_library(mimiclib STATIC src/pollHandler.cpp src/eventNotifier.cpp src/eventQueue.cpp src/eventHandler.cpp src/mimic.cpp src/connections.cpp  src/fileWorker.cpp)
 add_executable(mimic src/main.cpp)   
 target_link_libraries (mimic ${CMAKE_THREAD_LIBS_INIT} mimiclib)   
 

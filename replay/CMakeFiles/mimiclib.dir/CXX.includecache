@@ -6,29 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/users/sunshine/mimic-generator/src/connections.cpp
+/users/sunshine/mimic/replay/src/connections.cpp
 connections.h
-/users/sunshine/mimic-generator/src/connections.h
+/users/sunshine/mimic/replay/src/connections.h
 sstream
 -
 
-/users/sunshine/mimic-generator/src/event.cpp
-iostream
--
-fstream
--
-algorithm
--
-vector
--
-queue
--
-thread
--
-mimic.h
-/users/sunshine/mimic-generator/src/mimic.h
-
-/users/sunshine/mimic-generator/src/eventHandler.cpp
+/users/sunshine/mimic/replay/src/eventHandler.cpp
 fstream
 -
 exception
@@ -40,15 +24,15 @@ netinet/in.h
 arpa/inet.h
 -
 eventHandler.h
-/users/sunshine/mimic-generator/src/eventHandler.h
+/users/sunshine/mimic/replay/src/eventHandler.h
 connections.h
-/users/sunshine/mimic-generator/src/connections.h
+/users/sunshine/mimic/replay/src/connections.h
 
-/users/sunshine/mimic-generator/src/eventNotifier.cpp
+/users/sunshine/mimic/replay/src/eventNotifier.cpp
 eventNotifier.h
-/users/sunshine/mimic-generator/src/eventNotifier.h
+/users/sunshine/mimic/replay/src/eventNotifier.h
 
-/users/sunshine/mimic-generator/src/eventQueue.cpp
+/users/sunshine/mimic/replay/src/eventQueue.cpp
 stdlib.h
 -
 iostream
@@ -74,27 +58,27 @@ fstream
 unordered_map
 -
 eventQueue.h
-/users/sunshine/mimic-generator/src/eventQueue.h
+/users/sunshine/mimic/replay/src/eventQueue.h
 mimic.h
-/users/sunshine/mimic-generator/src/mimic.h
+/users/sunshine/mimic/replay/src/mimic.h
 
-/users/sunshine/mimic-generator/src/fileWorker.cpp
+/users/sunshine/mimic/replay/src/fileWorker.cpp
 connections.h
-/users/sunshine/mimic-generator/src/connections.h
+/users/sunshine/mimic/replay/src/connections.h
 eventQueue.h
-/users/sunshine/mimic-generator/src/eventQueue.h
+/users/sunshine/mimic/replay/src/eventQueue.h
 fileWorker.h
-/users/sunshine/mimic-generator/src/fileWorker.h
+/users/sunshine/mimic/replay/src/fileWorker.h
 mimic.h
-/users/sunshine/mimic-generator/src/mimic.h
+/users/sunshine/mimic/replay/src/mimic.h
 
-/users/sunshine/mimic-generator/src/mimic.cpp
+/users/sunshine/mimic/replay/src/mimic.cpp
 mimic.h
-/users/sunshine/mimic-generator/src/mimic.h
+/users/sunshine/mimic/replay/src/mimic.h
 
-/users/sunshine/mimic-generator/src/pollHandler.cpp
+/users/sunshine/mimic/replay/src/pollHandler.cpp
 pollHandler.h
-/users/sunshine/mimic-generator/src/pollHandler.h
+/users/sunshine/mimic/replay/src/pollHandler.h
 
 include/connections.h
 mimic.h

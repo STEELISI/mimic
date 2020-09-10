@@ -43,10 +43,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /users/sunshine/mimic-generator
+CMAKE_SOURCE_DIR = /users/sunshine/mimic/replay
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /users/sunshine/mimic-generator
+CMAKE_BINARY_DIR = /users/sunshine/mimic/replay
 
 # Include any dependencies generated for this target.
 include CMakeFiles/mimiclib.dir/depend.make
@@ -59,16 +59,16 @@ include CMakeFiles/mimiclib.dir/flags.make
 
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: src/pollHandler.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o -c /users/sunshine/mimic-generator/src/pollHandler.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o -c /users/sunshine/mimic/replay/src/pollHandler.cpp
 
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/pollHandler.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/pollHandler.cpp > CMakeFiles/mimiclib.dir/src/pollHandler.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/pollHandler.cpp > CMakeFiles/mimiclib.dir/src/pollHandler.cpp.i
 
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/pollHandler.cpp -o CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/pollHandler.cpp -o CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s
 
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o.requires:
 
@@ -83,16 +83,16 @@ CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o.provides.build: CMakeFiles/mimicli
 
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: src/eventNotifier.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o -c /users/sunshine/mimic-generator/src/eventNotifier.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o -c /users/sunshine/mimic/replay/src/eventNotifier.cpp
 
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/eventNotifier.cpp > CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/eventNotifier.cpp > CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.i
 
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/eventNotifier.cpp -o CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/eventNotifier.cpp -o CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.s
 
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o.requires:
 
@@ -107,16 +107,16 @@ CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o.provides.build: CMakeFiles/mimic
 
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: src/eventQueue.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o -c /users/sunshine/mimic-generator/src/eventQueue.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o -c /users/sunshine/mimic/replay/src/eventQueue.cpp
 
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/eventQueue.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/eventQueue.cpp > CMakeFiles/mimiclib.dir/src/eventQueue.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/eventQueue.cpp > CMakeFiles/mimiclib.dir/src/eventQueue.cpp.i
 
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/eventQueue.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/eventQueue.cpp -o CMakeFiles/mimiclib.dir/src/eventQueue.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/eventQueue.cpp -o CMakeFiles/mimiclib.dir/src/eventQueue.cpp.s
 
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o.requires:
 
@@ -129,42 +129,18 @@ CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o.provides: CMakeFiles/mimiclib.dir/s
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o.provides.build: CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o
 
 
-CMakeFiles/mimiclib.dir/src/event.cpp.o: CMakeFiles/mimiclib.dir/flags.make
-CMakeFiles/mimiclib.dir/src/event.cpp.o: src/event.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/mimiclib.dir/src/event.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/event.cpp.o -c /users/sunshine/mimic-generator/src/event.cpp
-
-CMakeFiles/mimiclib.dir/src/event.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/event.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/event.cpp > CMakeFiles/mimiclib.dir/src/event.cpp.i
-
-CMakeFiles/mimiclib.dir/src/event.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/event.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/event.cpp -o CMakeFiles/mimiclib.dir/src/event.cpp.s
-
-CMakeFiles/mimiclib.dir/src/event.cpp.o.requires:
-
-.PHONY : CMakeFiles/mimiclib.dir/src/event.cpp.o.requires
-
-CMakeFiles/mimiclib.dir/src/event.cpp.o.provides: CMakeFiles/mimiclib.dir/src/event.cpp.o.requires
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/event.cpp.o.provides.build
-.PHONY : CMakeFiles/mimiclib.dir/src/event.cpp.o.provides
-
-CMakeFiles/mimiclib.dir/src/event.cpp.o.provides.build: CMakeFiles/mimiclib.dir/src/event.cpp.o
-
-
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: src/eventHandler.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o -c /users/sunshine/mimic-generator/src/eventHandler.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o -c /users/sunshine/mimic/replay/src/eventHandler.cpp
 
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/eventHandler.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/eventHandler.cpp > CMakeFiles/mimiclib.dir/src/eventHandler.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/eventHandler.cpp > CMakeFiles/mimiclib.dir/src/eventHandler.cpp.i
 
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/eventHandler.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/eventHandler.cpp -o CMakeFiles/mimiclib.dir/src/eventHandler.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/eventHandler.cpp -o CMakeFiles/mimiclib.dir/src/eventHandler.cpp.s
 
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.requires:
 
@@ -179,16 +155,16 @@ CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.provides.build: CMakeFiles/mimicl
 
 CMakeFiles/mimiclib.dir/src/mimic.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/mimic.cpp.o: src/mimic.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/mimiclib.dir/src/mimic.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/mimic.cpp.o -c /users/sunshine/mimic-generator/src/mimic.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/mimiclib.dir/src/mimic.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/mimic.cpp.o -c /users/sunshine/mimic/replay/src/mimic.cpp
 
 CMakeFiles/mimiclib.dir/src/mimic.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/mimic.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/mimic.cpp > CMakeFiles/mimiclib.dir/src/mimic.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/mimic.cpp > CMakeFiles/mimiclib.dir/src/mimic.cpp.i
 
 CMakeFiles/mimiclib.dir/src/mimic.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/mimic.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/mimic.cpp -o CMakeFiles/mimiclib.dir/src/mimic.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/mimic.cpp -o CMakeFiles/mimiclib.dir/src/mimic.cpp.s
 
 CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires:
 
@@ -203,16 +179,16 @@ CMakeFiles/mimiclib.dir/src/mimic.cpp.o.provides.build: CMakeFiles/mimiclib.dir/
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: src/connections.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/mimiclib.dir/src/connections.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/connections.cpp.o -c /users/sunshine/mimic-generator/src/connections.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/mimiclib.dir/src/connections.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/connections.cpp.o -c /users/sunshine/mimic/replay/src/connections.cpp
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/connections.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/connections.cpp > CMakeFiles/mimiclib.dir/src/connections.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/connections.cpp > CMakeFiles/mimiclib.dir/src/connections.cpp.i
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/connections.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/connections.cpp -o CMakeFiles/mimiclib.dir/src/connections.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/connections.cpp -o CMakeFiles/mimiclib.dir/src/connections.cpp.s
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.o.requires:
 
@@ -227,16 +203,16 @@ CMakeFiles/mimiclib.dir/src/connections.cpp.o.provides.build: CMakeFiles/mimicli
 
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: CMakeFiles/mimiclib.dir/flags.make
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: src/fileWorker.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o -c /users/sunshine/mimic-generator/src/fileWorker.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o -c /users/sunshine/mimic/replay/src/fileWorker.cpp
 
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/fileWorker.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic-generator/src/fileWorker.cpp > CMakeFiles/mimiclib.dir/src/fileWorker.cpp.i
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/fileWorker.cpp > CMakeFiles/mimiclib.dir/src/fileWorker.cpp.i
 
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic-generator/src/fileWorker.cpp -o CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/fileWorker.cpp -o CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s
 
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o.requires:
 
@@ -254,7 +230,6 @@ mimiclib_OBJECTS = \
 "CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o" \
-"CMakeFiles/mimiclib.dir/src/event.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/mimic.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/connections.cpp.o" \
@@ -266,14 +241,13 @@ mimiclib_EXTERNAL_OBJECTS =
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o
-libmimiclib.a: CMakeFiles/mimiclib.dir/src/event.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/mimic.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/connections.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/build.make
 libmimiclib.a: CMakeFiles/mimiclib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/users/sunshine/mimic-generator/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX static library libmimiclib.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX static library libmimiclib.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/mimiclib.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/mimiclib.dir/link.txt --verbose=$(VERBOSE)
 
@@ -285,7 +259,6 @@ CMakeFiles/mimiclib.dir/build: libmimiclib.a
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o.requires
-CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/event.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/connections.cpp.o.requires
@@ -298,6 +271,6 @@ CMakeFiles/mimiclib.dir/clean:
 .PHONY : CMakeFiles/mimiclib.dir/clean
 
 CMakeFiles/mimiclib.dir/depend:
-	cd /users/sunshine/mimic-generator && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /users/sunshine/mimic-generator /users/sunshine/mimic-generator /users/sunshine/mimic-generator /users/sunshine/mimic-generator /users/sunshine/mimic-generator/CMakeFiles/mimiclib.dir/DependInfo.cmake --color=$(COLOR)
+	cd /users/sunshine/mimic/replay && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /users/sunshine/mimic/replay /users/sunshine/mimic/replay /users/sunshine/mimic/replay /users/sunshine/mimic/replay /users/sunshine/mimic/replay/CMakeFiles/mimiclib.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/mimiclib.dir/depend
 

@@ -6,5 +6,5 @@ CXX_FLAGS = -Wall -g -O2 --std=gnu++2a --stdlib=libc++ -DASIO_STANDALONE
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/users/sunshine/mimic-generator/include 
+CXX_INCLUDES = -I/users/sunshine/mimic/replay/include 
 

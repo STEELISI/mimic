@@ -10,7 +10,6 @@
 #include "eventQueue.h"
 #include "eventHandler.h"
 #include "fileWorker.h"
-#include "serverWorker.h"
 #include "connections.h"
 
 #define SRV_PORT 5205

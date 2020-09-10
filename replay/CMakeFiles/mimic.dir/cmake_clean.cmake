@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/mimic.dir/src/test.cpp.o"
+  "CMakeFiles/mimic.dir/src/main.cpp.o"
   "mimic.pdb"
   "mimic"
 )

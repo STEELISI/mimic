@@ -16,6 +16,8 @@
 #include <condition_variable>
 #include "connections.h"
 
+#define MAX_BACKLOG_PER_SRV 1000
+
 
 /* Mutexes and condition variables. */
 extern std::mutex fileHandlerMTX;

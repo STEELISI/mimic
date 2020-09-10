@@ -13,7 +13,6 @@
 #include "eventQueue.h"
 #include "mimic.h"
 
-#define MAX_BACKLOG_PER_SRV 5
 
 int compareEvents::operator()(const Event& e1, const Event& e2) {
   if (e1.ms_from_start != e2.ms_from_start)

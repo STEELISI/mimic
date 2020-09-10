@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/users/sunshine/mimic-generator/src/test.cpp" "/users/sunshine/mimic-generator/CMakeFiles/mimic.dir/src/test.cpp.o"
+  "/users/sunshine/mimic/replay/src/main.cpp" "/users/sunshine/mimic/replay/CMakeFiles/mimic.dir/src/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -15,7 +15,7 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
 
 # Targets to which this target links.
 set(CMAKE_TARGET_LINKED_INFO_FILES
-  "/users/sunshine/mimic-generator/CMakeFiles/mimiclib.dir/DependInfo.cmake"
+  "/users/sunshine/mimic/replay/CMakeFiles/mimiclib.dir/DependInfo.cmake"
   )
 
 # Fortran module output directory.

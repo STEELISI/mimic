@@ -1,4 +1,4 @@
-# Install script for directory: /users/sunshine/mimic-generator
+# Install script for directory: /users/sunshine/mimic/replay
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/users/sunshine/mimic-generator/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/users/sunshine/mimic/replay/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

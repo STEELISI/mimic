@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/users/sunshine/mimic-generator/src/test.cpp
+/users/sunshine/mimic/replay/src/main.cpp
 atomic
 -
 exception
@@ -22,17 +22,15 @@ unistd.h
 signal.h
 -
 mimic.h
-/users/sunshine/mimic-generator/src/mimic.h
+/users/sunshine/mimic/replay/src/mimic.h
 eventQueue.h
-/users/sunshine/mimic-generator/src/eventQueue.h
+/users/sunshine/mimic/replay/src/eventQueue.h
 eventHandler.h
-/users/sunshine/mimic-generator/src/eventHandler.h
+/users/sunshine/mimic/replay/src/eventHandler.h
 fileWorker.h
-/users/sunshine/mimic-generator/src/fileWorker.h
-serverWorker.h
-/users/sunshine/mimic-generator/src/serverWorker.h
+/users/sunshine/mimic/replay/src/fileWorker.h
 connections.h
-/users/sunshine/mimic-generator/src/connections.h
+/users/sunshine/mimic/replay/src/connections.h
 
 include/connections.h
 mimic.h
@@ -195,36 +193,6 @@ unistd.h
 -
 set
 -
-mimic.h
-include/mimic.h
-
-include/serverWorker.h
-stdlib.h
--
-iostream
--
-thread
--
-unistd.h
--
-time.h
--
-string
--
-sstream
--
-fcntl.h
--
-vector
--
-queue
--
-unordered_map
--
-connections.h
-include/connections.h
-eventQueue.h
-include/eventQueue.h
 mimic.h
 include/mimic.h
 

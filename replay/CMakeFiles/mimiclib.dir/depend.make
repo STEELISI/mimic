@@ -5,10 +5,6 @@ CMakeFiles/mimiclib.dir/src/connections.cpp.o: src/connections.cpp
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: include/mimic.h
 
-CMakeFiles/mimiclib.dir/src/event.cpp.o: src/event.cpp
-CMakeFiles/mimiclib.dir/src/event.cpp.o: include/connections.h
-CMakeFiles/mimiclib.dir/src/event.cpp.o: include/mimic.h
-
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: src/eventHandler.cpp
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/eventHandler.h

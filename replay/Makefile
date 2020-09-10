@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /users/sunshine/mimic-generator
+CMAKE_SOURCE_DIR = /users/sunshine/mimic/replay
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /users/sunshine/mimic-generator
+CMAKE_BINARY_DIR = /users/sunshine/mimic/replay
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /users/sunshine/mimic-generator/CMakeFiles /users/sunshine/mimic-generator/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /users/sunshine/mimic/replay/CMakeFiles /users/sunshine/mimic/replay/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /users/sunshine/mimic-generator/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /users/sunshine/mimic/replay/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -162,33 +162,6 @@ src/connections.s: src/connections.cpp.s
 src/connections.cpp.s:
 	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/connections.cpp.s
 .PHONY : src/connections.cpp.s
-
-src/event.o: src/event.cpp.o
-
-.PHONY : src/event.o
-
-# target to build an object file
-src/event.cpp.o:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/event.cpp.o
-.PHONY : src/event.cpp.o
-
-src/event.i: src/event.cpp.i
-
-.PHONY : src/event.i
-
-# target to preprocess a source file
-src/event.cpp.i:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/event.cpp.i
-.PHONY : src/event.cpp.i
-
-src/event.s: src/event.cpp.s
-
-.PHONY : src/event.s
-
-# target to generate assembly for a file
-src/event.cpp.s:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/event.cpp.s
-.PHONY : src/event.cpp.s
 
 src/eventHandler.o: src/eventHandler.cpp.o
 
@@ -298,6 +271,33 @@ src/fileWorker.cpp.s:
 	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s
 .PHONY : src/fileWorker.cpp.s
 
+src/main.o: src/main.cpp.o
+
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cpp.o:
+	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cpp.i:
+	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
+
 src/mimic.o: src/mimic.cpp.o
 
 .PHONY : src/mimic.o
@@ -352,33 +352,6 @@ src/pollHandler.cpp.s:
 	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s
 .PHONY : src/pollHandler.cpp.s
 
-src/test.o: src/test.cpp.o
-
-.PHONY : src/test.o
-
-# target to build an object file
-src/test.cpp.o:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/test.cpp.o
-.PHONY : src/test.cpp.o
-
-src/test.i: src/test.cpp.i
-
-.PHONY : src/test.i
-
-# target to preprocess a source file
-src/test.cpp.i:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/test.cpp.i
-.PHONY : src/test.cpp.i
-
-src/test.s: src/test.cpp.s
-
-.PHONY : src/test.s
-
-# target to generate assembly for a file
-src/test.cpp.s:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/test.cpp.s
-.PHONY : src/test.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -392,9 +365,6 @@ help:
 	@echo "... src/connections.o"
 	@echo "... src/connections.i"
 	@echo "... src/connections.s"
-	@echo "... src/event.o"
-	@echo "... src/event.i"
-	@echo "... src/event.s"
 	@echo "... src/eventHandler.o"
 	@echo "... src/eventHandler.i"
 	@echo "... src/eventHandler.s"
@@ -407,15 +377,15 @@ help:
 	@echo "... src/fileWorker.o"
 	@echo "... src/fileWorker.i"
 	@echo "... src/fileWorker.s"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
 	@echo "... src/mimic.o"
 	@echo "... src/mimic.i"
 	@echo "... src/mimic.s"
 	@echo "... src/pollHandler.o"
 	@echo "... src/pollHandler.i"
 	@echo "... src/pollHandler.s"
-	@echo "... src/test.o"
-	@echo "... src/test.i"
-	@echo "... src/test.s"
 .PHONY : help
 
 

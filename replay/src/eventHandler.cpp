@@ -6,7 +6,6 @@
 #include "eventHandler.h"
 #include "connections.h"
 
-#define MAX_BACKLOG_PER_SRV 1000
 
 //Trying a commit
 

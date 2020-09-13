@@ -1,12 +1,13 @@
 /* Takes input trace as PCAP and outputs 
    comma separated data about connections and events  */
 
-#define __STDC_FORMAT_MACROS
+#define __SmaTDC_FORMAT_MACROS
 
 using namespace std;
 
 #include <stdio.h>
 #include <string.h>
+#include <fstream>
 #include <assert.h>
 #include <getopt.h>
 #include <sys/socket.h>
@@ -21,6 +22,8 @@ using namespace std;
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 enum states{OPEN, HALFCLOSED, CLOSED, TBD};
 
@@ -31,6 +34,7 @@ const double SRV_SHIFT = 6;
 uint64_t flow_counter = 0;
 
 int conn_id_counter = 0;
+int nextport=1024;
 
 double bucketlimits[] = {0, 0.001, 0.01, 0.1, 1, 10};
 double old_ts = 0;
@@ -41,7 +45,12 @@ int BUF = 4000000;
 int MSS = 1500;
 int MAXMSS = 15000;
 
-#define STRLEN 50
+#define STRLEN 150
+
+bool orig = true;
+string client, server;
+unordered_map<int, int> portsToChange;
+unordered_set<int> portsInUse;
 
 class avgpair
 {
@@ -207,17 +216,22 @@ public:
   map <int, event> flow_events;
   long int event_id;
   uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack;
-  long int src_toack, dst_toack;
+  long int src_toack, dst_toack, src_sent, dst_sent, src_waited, dst_waited;
   double src_ack_ts, dst_ack_ts, last_ts;
   enum states state;
   long int conn_id;
-
+  string src_str;
+  string dst_str;
+  string conn_str;
+  
   flow_stats()
   {
     event_id = 0;
-    src_seq = dst_seq = src_ack = dst_ack = 0;
+    src_seq = dst_seq = src_ack = dst_ack = src_lastack = dst_lastack = 0;
+    src_sent = dst_sent = src_toack = dst_toack = src_waited = dst_waited = 0;
     src_toack = dst_toack = 0;
     src_ack_ts = dst_ack_ts = 0;
+    conn_str = "";
     state = OPEN;
     last_ts = 0;
     conn_id = conn_id_counter++;
@@ -240,6 +254,8 @@ public:
   {
     if (this != &f)
       {
+	src_str = f.src_str;
+	dst_str = f.dst_str;
 	src_IDs = f.src_IDs;
 	dst_IDs = f.dst_IDs;
 	src_seqs = f.src_seqs;
@@ -250,11 +266,18 @@ public:
 	event_id = f.event_id;
 	src_seq = f.src_seq;
 	dst_seq = f.dst_seq;
-	src_ack = f.src_ack;
+	src_ack = f.src_ack;	
+	src_lastack = f.src_lastack;
+	src_toack = f.src_toack;
+	src_waited = f.src_waited;
 	dst_ack = f.dst_ack;
+	dst_lastack = f.dst_lastack;
+	dst_toack = f.dst_toack;
+	dst_waited = f.dst_waited;
 	src_ack_ts = f.src_ack_ts;
 	dst_ack_ts = f.dst_ack_ts;
 	conn_id = f.conn_id;
+	conn_str = f.conn_str;
       }
     return *this;
   }
@@ -262,6 +285,26 @@ public:
 };
 
 map <flow_id, flow_stats> flowmap;
+
+
+int checkUsed(int port)
+{
+  if (portsInUse.find(port) == portsInUse.end())
+    {
+      portsInUse.insert(port);
+      return port;
+    }
+  if (nextport > 65535)
+    return -1;
+  while (portsInUse.find(nextport) != portsInUse.end())
+    {
+      nextport++;
+    }
+  if (nextport > 65535)
+    return -1;
+  portsInUse.insert(nextport);
+  return nextport;
+}
 
 
 int process_packet(flow_id fid, int dir, uint32_t src, uint32_t dst, uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id, double ts, int syn, int fin, int psh)
@@ -365,15 +408,15 @@ void close_flow(flow_id fid)
 {
   flow_id rid(fid.dstIP, fid.srcIP, fid.dport,fid.sport);
 
-  char str[STRLEN];
-  strcpy(str, inet_ntoa(*(struct in_addr *)&(fid.srcIP)));
-  if (flowmap[fid].src_toack > 1)
-      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, str, "WAIT", flowmap[fid].src_toack, 0.0, flowmap[fid].last_ts+SHIFT);
-  printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, str, "CLOSE", 0, 0.0, flowmap[fid].last_ts+SHIFT+THRESH);
-  strcpy(str, inet_ntoa(*(struct in_addr *)&(fid.dstIP)));
-  if (flowmap[fid].dst_toack > 1)
-      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, str, "WAIT", flowmap[fid].dst_toack, 0.0, flowmap[fid].last_ts+SHIFT);
-  printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, str, "CLOSE", 0, 0.0, flowmap[fid].last_ts+SHIFT+THRESH);
+  if (flowmap[fid].event_id > 0)
+    {
+      if (flowmap[fid].src_toack > 0)
+	printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, flowmap[fid].src_str.c_str(), "WAIT", flowmap[fid].src_toack, 0.0, flowmap[fid].last_ts-start_ts+SHIFT);
+      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, flowmap[fid].src_str.c_str(), "CLOSE", 0, 0.0, flowmap[fid].last_ts-start_ts+SHIFT+THRESH);
+      if (flowmap[fid].dst_toack > 0)
+	printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, flowmap[fid].dst_str.c_str(), "WAIT", flowmap[fid].dst_toack, 0.0, flowmap[fid].last_ts-start_ts+SHIFT);
+      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, flowmap[fid].dst_str.c_str(), "CLOSE", 0, 0.0, flowmap[fid].last_ts-start_ts+SHIFT+THRESH);
+    }
   flowmap.erase(fid);
   flowmap.erase(rid);
 }
@@ -432,13 +475,33 @@ void per_packet(libtrace_packet_t *packet) {
 	        
 	  double last_ack_ts;
 	  uint32_t src, dst;
-	  char src_str[STRLEN], dst_str[STRLEN];
+	  string src_str, dst_str;
 	  src = ip->ip_src.s_addr;
 	  dst = ip->ip_dst.s_addr;
-	  strcpy(src_str, inet_ntoa(ip->ip_src));
-	  strcpy(dst_str, inet_ntoa(ip->ip_dst));
+	  if (orig)
+	    {
+	      src_str = inet_ntoa(ip->ip_src);
+	      dst_str = inet_ntoa(ip->ip_dst);
+	    }
+	  else
+	    {
+	      if (src < dst)
+		{
+		  src_str = client;
+		  dst_str = server;
+		}
+	      else
+		{
+		  src_str = server;
+		  dst_str = client;
+		}
+	    }
 	  src_port = trace_get_source_port(packet);
 	  dst_port = trace_get_destination_port(packet);
+	  if (portsToChange.find(src_port) != portsToChange.end())
+	    src_port = portsToChange[src_port];
+	  if (portsToChange.find(dst_port) != portsToChange.end())
+	    dst_port = portsToChange[dst_port];
 	  payload_size = trace_get_payload_length(packet);
 
 	  flow_id did(src, dst, src_port, dst_port);
@@ -455,28 +518,98 @@ void per_packet(libtrace_packet_t *packet) {
 		{
 		  flow_stats FS;
 		  flowmap[did] = FS;
-		  event E = {ts-start_ts, src, src_port,  dst, dst_port, "CONN", payload_size, 0, seq-payload_size, ack};
+		  flowmap[did].src_str = src_str;
+		  flowmap[did].dst_str = dst_str;
 		  flowmap[did].src_seq = seq-payload_size;
 		  flowmap[did].src_ack = flowmap[did].src_lastack = ack;
-		  printf("CONN,%d,%s,%d,->,%s,%d,%f\n", flowmap[did].conn_id, src_str, src_port, dst_str, dst_port, (ts-start_ts+SRV_SHIFT));
-		  //printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[did].conn_id, flowmap[did].event_id++, src_str, "SEND", payload_size, 0, ts-start_ts+SHIFT);
-		  //flowmap[did].dst_toack += payload_size;
+		  if (src_port >= dst_port)
+		    {
+		      src_port = checkUsed(src_port);
+		      if (src_port == -1)
+			return;
+		      flowmap[did].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+src_str+","+to_string(src_port)+",->,"+dst_str+","+to_string(dst_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		    }
+		  else
+		    {
+		      dst_port = checkUsed(dst_port);
+		      if (dst_port == -1)
+			return;
+		      flowmap[did].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+dst_str+","+to_string(dst_port)+",->,"+src_str+","+to_string(src_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		    }
 		}	      
 	      else
 		return;
 	    }
 	  flow_id fid(0,0,0,0);
 	  if (flowmap.find(did) != flowmap.end())
+	    {
 	      fid = did;
+	    }
 	  else
+	    {
 	      fid = rid;
-
+	    }
+	  //printf("%lf %ld:%d -> %ld:%d src %ld, syn %d fid src sent %d dst to ack %d dst waited %d / dst sent %d src toack %d src waited %d payload size %d seq %ld ack %ld src_seq %ld src_ack %ld src_lastack %ld dst_seq %ld dst_ack %ld dst_lastack %ld \n", ts, fid.srcIP, fid.sport, fid.dstIP, fid.dport, ip->ip_src, tcp->syn, flowmap[fid].src_sent,  flowmap[fid].dst_toack,  flowmap[fid].dst_waited, flowmap[fid].dst_sent,  flowmap[fid].src_toack, flowmap[fid].src_waited, payload_size, seq, ack, flowmap[fid].src_seq, flowmap[fid].src_ack, flowmap[fid].src_lastack, flowmap[fid].dst_seq, flowmap[fid].dst_ack, flowmap[fid].dst_lastack);
 	  long int acked = 0;
 	  if ((tcp->fin || tcp->rst) && payload_size == 0)
 	    {
 	      close_flow(fid);
 	      return;
 	    }
+	  if (tcp->syn) // new connection on encapsulated IPv6
+	    {
+	      close_flow(fid);
+	      return;
+	    }
+	  if (src == fid.srcIP && (flowmap[fid].src_seq > 0 && abs((int)(seq - flowmap[fid].src_seq)) > 100000))
+	    {
+	      close_flow(fid);
+	      flow_stats FS;
+	      flowmap[fid] = FS;
+	      flowmap[fid].src_str = src_str;
+	      flowmap[fid].dst_str = dst_str;
+	      flowmap[fid].src_seq = seq-payload_size;
+	      flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
+	      if (src_port >= dst_port)
+		{
+		  src_port = checkUsed(src_port);
+		  if (src_port == -1)
+		    return;
+		  flowmap[fid].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+src_str+","+to_string(src_port)+",->,"+dst_str+","+to_string(dst_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		}
+	      else
+		{
+		  dst_port = checkUsed(dst_port);
+		  if (dst_port == -1)
+		    return;
+		  flowmap[fid].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+dst_str+","+to_string(dst_port)+",->,"+src_str+","+to_string(src_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		}
+	    }
+	  if (src == fid.dstIP && (flowmap[fid].dst_seq > 0 &&abs((int)(seq - flowmap[fid].dst_seq)) > 100000))
+	    {
+	      close_flow(rid);
+	      flow_stats FS;
+	      flowmap[fid] = FS;
+	      flowmap[fid].dst_str = src_str;
+	      flowmap[fid].src_str = dst_str;
+	      flowmap[fid].dst_seq = seq-payload_size;
+	      flowmap[fid].dst_ack = flowmap[fid].dst_lastack = ack;
+	      if (src_port >= dst_port)
+		{
+		  src_port = checkUsed(src_port);
+		  if (src_port == -1)
+		    return;
+		  flowmap[fid].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+src_str+","+to_string(src_port)+",->,"+dst_str+","+to_string(dst_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		}
+	      else
+		{
+		  dst_port = checkUsed(dst_port);
+		  if (dst_port == -1)
+		    return;
+		  flowmap[fid].conn_str = "CONN,"+to_string(flowmap[did].conn_id)+","+dst_str+","+to_string(dst_port)+",->,"+src_str+","+to_string(src_port)+","+to_string(ts-start_ts+SRV_SHIFT);
+		}
+	    }
+	
 	  /* Insert hosts into map if not there */
 	  /* Calculate RTTs from the vantage point */
 	  int duplicate;
@@ -493,24 +626,17 @@ void per_packet(libtrace_packet_t *packet) {
 		      /* One-way traffic, need to generate send first */
 		      if(flowmap[fid].src_toack < ack - flowmap[fid].src_ack)
 			{
-			  long int diff = ack - flowmap[fid].src_ack - flowmap[fid].src_toack;
-			  if (diff > 1)
+			  long int diff = ack - flowmap[fid].src_ack; // - flowmap[fid].src_toack;
+			  if (diff > 0)
 			    {
-			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, dst_str, "SEND", diff, 0, ts-start_ts+SHIFT);
+			      if (flowmap[fid].event_id == 0)
+				printf("%s\n", flowmap[fid].conn_str.c_str());
+			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, dst_str.c_str(), "SEND", diff, 0.0, ts-start_ts+SHIFT-THRESH);
+			      flowmap[fid].dst_sent += diff;
 			      flowmap[fid].src_toack += diff;
 			    }
 			}
-		      acked = ack - flowmap[fid].src_lastack;
-		      // Jelena
-		      if (flowmap[fid].src_toack < acked)
-			{
-			  long int diff = acked - flowmap[fid].src_toack;
-			  if (diff > 1)
-			    {
-			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, dst_str, "SEND", diff, 0, ts-start_ts+SHIFT);
-			      flowmap[fid].src_toack += diff;
-			    }
-			}
+		      acked = flowmap[fid].src_toack;
 		    }
 		  if (payload_size == 0)
 		    flowmap[fid].src_lastack = ack;
@@ -545,24 +671,17 @@ void per_packet(libtrace_packet_t *packet) {
 		      /* One-way traffic, need to generate send first */
 		      if(flowmap[fid].dst_toack < ack - flowmap[fid].dst_ack)
 			{
-			  long int diff = ack - flowmap[fid].dst_ack - flowmap[fid].dst_toack;
-			  if (diff > 1)
+			  long int diff = ack - flowmap[fid].dst_ack; // - flowmap[fid].dst_toack;
+			  if (diff > 0)
 			    {
-			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str, "SEND", diff, 0, ts-start_ts+SHIFT);
+			      if (flowmap[fid].event_id == 0)
+				printf("%s\n", flowmap[fid].conn_str.c_str());
+			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, dst_str.c_str(), "SEND", diff, 0.0, ts-start_ts-THRESH+SHIFT);
 			      flowmap[fid].dst_toack += diff;
+			      flowmap[fid].src_sent += diff;
 			    }
 			}		      
-		      acked = ack - flowmap[fid].dst_lastack;
-		      // Jelena
-		      if (flowmap[fid].dst_toack < acked)
-			{
-			  long int diff = acked - flowmap[fid].dst_toack;
-			  if (diff > 1)
-			    {
-			      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str, "SEND", diff, 0, ts-start_ts+SHIFT);
-			      flowmap[fid].dst_toack += diff;
-			    }
-			}
+		      acked = flowmap[fid].dst_toack;
 		    }
 		  if (payload_size == 0)
 		    flowmap[fid].dst_lastack = ack;
@@ -596,26 +715,44 @@ void per_packet(libtrace_packet_t *packet) {
 	    
 	    if (payload_size != 0)
 	      {
-		event E = {ts-start_ts, src, src_port,  dst, dst_port, "SEND", payload_size, wait, seq, ack};
-		flowmap[fid].last_ts = ts-start_ts;
-		printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str, "SEND", payload_size, wait, ts-start_ts+SHIFT);
+		flowmap[fid].last_ts = ts;
+		if (flowmap[fid].event_id == 0)
+		  printf("%s\n", flowmap[fid].conn_str.c_str());
+		printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str.c_str(), "SEND", payload_size, wait, ts-start_ts+SHIFT);
 		if (src == fid.srcIP)
-		  flowmap[fid].dst_toack += payload_size;
+		  {
+		    flowmap[fid].dst_toack += payload_size;
+		    flowmap[fid].src_sent += payload_size;
+		  }
 		else
-		  flowmap[fid].src_toack += payload_size;
+		  {
+		    flowmap[fid].src_toack += payload_size;
+		    flowmap[fid].dst_sent += payload_size;
+		  }
+		//printf("srctoack %d dsttoack %d\n", flowmap[fid].dst_toack, flowmap[fid].src_toack);
 	      }
 	    else
 	      {
 		if (!tcp->syn && payload_size == 0 && acked > 0)
 		  {
-		    flowmap[fid].last_ts = ts-start_ts;
+		    flowmap[fid].last_ts = ts;
 		    event E = {ts-start_ts, src, src_port,  dst, dst_port, "ACK", payload_size, wait, seq, ack};
-		    if (acked > 1)
-		      printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str, "WAIT", acked, wait, ts-start_ts+SHIFT);
+		    if (acked > 0)
+		      {
+			if (flowmap[fid].event_id == 0)
+			  printf("%s\n", flowmap[fid].conn_str.c_str());
+			printf("EVENT,%d,%d,%s,%s,%d,%lf,%lf\n", flowmap[fid].conn_id, flowmap[fid].event_id++, src_str.c_str(), "WAIT", acked, wait, ts-start_ts+SHIFT);
+		      }
 		    if (src == fid.srcIP)
-		      flowmap[fid].src_toack -= acked;
+		      {
+			flowmap[fid].src_toack -= acked;
+			flowmap[fid].src_waited += acked;
+		      }
 		    else
-		      flowmap[fid].dst_toack -= acked;
+		      {
+			flowmap[fid].dst_toack -= acked;
+			flowmap[fid].dst_waited += acked;
+		      }
 		  }
 	      }
 	  }
@@ -630,58 +767,88 @@ int main(int argc, char *argv[]) {
 
         bool opt_true = true;
         bool opt_false = false;
-
-        int i;
-
-	/* Open output files */
-	events = fopen("events.csv", "w");
 	
-	fprintf(events, "X,CONNID,SEQ_NUM,ACTOR,STATE,VALUE,TIME,ATIME\n");
-
+        int i, opt;
+	
+	while ((opt = getopt(argc, argv, "c:s:")) != -1) {
+        switch (opt) {
+        case 'c':
+	  client = optarg;
+	  orig = false;
+	  break;
+        case 's':
+	  server = optarg;
+	  orig = false;
+	  break;
+	default:
+	  break;
+	}
+	}
+	if (orig == false && (client == "" || server == ""))
+	  {
+	    fprintf(stderr,"Both client and server IPs must be specified\n");
+	    exit(0);	    
+	  }
+	
         packet = trace_create_packet();
         if (packet == NULL) {
                 perror("Creating libtrace packet");
                 return -1;
         }
+	
+	if (optind >= argc) {
+	  fprintf(stderr, "Expected filename to process after options\n");
+	  exit(0);
+	}
 
-        optind = 1;
+
+	// Read any ports whose numbers should be changed
+	ifstream ports;
+	ports.open ("ports.csv");
+	int a, b;
+	
+	while(ports >> a >> b)
+	  portsToChange[a] = b;
+	
+	ports.close();
+	
 	double ts;
 		
         for (i = optind; i < argc; i++) {
-
+	  
 		/* Bog-standard libtrace stuff for reading trace files */
-		trace = trace_create(argv[i]);
-
-                if (!trace) {
-                        perror("Creating libtrace trace");
-                        return -1;
-                }
-
-                if (trace_is_err(trace)) {
-                        trace_perror(trace, "Opening trace file");
-                        trace_destroy(trace);
-                        continue;
-                }
-
-                if (trace_start(trace) == -1) {
-                        trace_perror(trace, "Starting trace");
-                        trace_destroy(trace);
-                        continue;
-                }
-
-                while (trace_read_packet(trace, packet) > 0) {
-		        ts = trace_get_seconds(packet);
-			per_packet(packet);		       
-                }
-
-                if (trace_is_err(trace)) {
-                        trace_perror(trace, "Reading packets");
-                        trace_destroy(trace);
-                        continue;
-                }
-
-                trace_destroy(trace);
-		cleanflows(ts-start_ts, true);
+	  trace = trace_create(argv[i]);
+	  
+	  if (!trace) {
+	    perror("Creating libtrace trace");
+	    return -1;
+	  }
+	  
+	  if (trace_is_err(trace)) {
+	    trace_perror(trace, "Opening trace file");
+	    trace_destroy(trace);
+	    continue;
+	  }
+	  
+	  if (trace_start(trace) == -1) {
+	    trace_perror(trace, "Starting trace");
+	    trace_destroy(trace);
+	    continue;
+	  }
+	  
+	  while (trace_read_packet(trace, packet) > 0) {
+	    ts = trace_get_seconds(packet);
+	    per_packet(packet);		       
+	  }
+	  
+	  if (trace_is_err(trace)) {
+	    trace_perror(trace, "Reading packets");
+	    trace_destroy(trace);
+	    continue;
+	  }
+	  
+	  trace_destroy(trace);
+	  cleanflows(ts-start_ts, true);
         }
 	trace_destroy_packet(packet);
 	cleanflows(ts-start_ts, true);

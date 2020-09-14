@@ -4,7 +4,7 @@
 #include <set>
 #include "mimic.h"
 
-#define MAX_EPOLL_EVENTS 20
+#define MAX_EPOLL_EVENTS 1000
 
 
 enum epollWatchType {

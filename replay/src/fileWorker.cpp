@@ -357,7 +357,9 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		(*connTime)[e.conn_id] = e.ms_from_start;
 		shortTermHeap->addEvent(e);
 	      }
-	      lastEventTime = std::stod(eventData[i][7].c_str()) * 1000 + loopedCount * loopDuration;
+	      double evtime =  std::stod(eventData[i][7].c_str()) * 1000 + loopedCount * loopDuration;
+	      if (evtime > lastEventTime)
+		lastEventTime = evtime;
 	      if (eventsProduced >= eventsToGet)
 		{
 		  lastLine = i+1;

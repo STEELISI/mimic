@@ -267,7 +267,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
     case SEND: {
       connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
       connToWaitingToSend[dispatchJob.conn_id] += dispatchJob.value;
-      //if (DEBUG)
+      if (DEBUG)
 	(*out)<<"Handling SEND event waiting to send "<<connToWaitingToSend[dispatchJob.conn_id]<<" on sock "<<dispatchJob.sockfd<<std::endl;
 
       // Try to send
@@ -591,7 +591,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     }
 
     long int nextHeapEventTime = eventsToHandle->nextEventTime();
-    (*out)<<"Next heap time "<<nextHeapEventTime<<" now "<<now<<std::endl;
+    //(*out)<<"Next heap time "<<nextHeapEventTime<<" now "<<now<<std::endl;
     
   
 	while(nextHeapEventTime <= now && nextHeapEventTime >= 0) {

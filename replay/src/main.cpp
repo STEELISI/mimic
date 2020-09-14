@@ -320,6 +320,8 @@ int main(int argc, char* argv[]) {
 
     char myName[SHORTLEN], filename[MEDLEN];
     signal(SIGINT, signal_callback_handler);
+    signal(SIGPIPE, SIG_IGN);
+
   
     int numConns = 1000;
     bool isServer = false;

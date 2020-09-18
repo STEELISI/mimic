@@ -38,8 +38,11 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     /* Open our events files. */    
     for(currentEventFile = eventsFiles.begin(); currentEventFile != eventsFiles.end(); ++currentEventFile) {
         try {
-            std::ifstream* f = new std::ifstream(*currentEventFile, std::ios::in);
-            eventsIFStreams.push_back(f);
+	  if (*currentEventFile != "-")
+	    {
+	      std::ifstream* f = new std::ifstream(*currentEventFile, std::ios::in);
+	      eventsIFStreams.push_back(f);
+	    }
         }
         catch(std::ios_base::failure& e) {
             std::cerr << e.what() << std::endl;

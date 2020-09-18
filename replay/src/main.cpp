@@ -427,6 +427,7 @@ int main(int argc, char* argv[]) {
     EventQueue * sendQ = new EventQueue("Send events.");
     
     std::cout<<"Conn file "<<connFile<<" event file "<<eventFile<<std::endl;
+
     //std::string ipFile = "/users/gbartlet/mimic-generator/testFiles/b-ips.txt";
     //connFile = "testconn.csv";
     //std::string connFile2 = "testconn2.csv";

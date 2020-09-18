@@ -252,6 +252,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		  connState[dispatchJob.conn_id] = EST;
 		  newConnectionUpdate(sockfd, dispatchJob.conn_id, dispatchJob.ms_from_start, now);
 		  (*connStats)[dispatchJob.conn_id].last_completed++;
+		  (*connStats)[dispatchJob.conn_id].started = now;
 		  if (DEBUG)
 		    (*out)<<"Connected successfully 1 for conn "<<dispatchJob.conn_id<<" state is now "<<connState[dispatchJob.conn_id]<<" last completed 9 "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
 		  getNewEvents(dispatchJob.conn_id);
@@ -393,6 +394,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  close(dispatchJob.sockfd);
 	  (*connStats)[dispatchJob.conn_id].state = DONE;
 	  (*connStats)[dispatchJob.conn_id].last_completed++;
+	  (*connStats)[dispatchJob.conn_id].completed = now;
 	  if (DEBUG)
 	    (*out)<<"For conn "<<dispatchJob.conn_id<<" last completed 2 "<<(*connStats)[dispatchJob.conn_id].last_completed<<" state "<<(*connStats)[dispatchJob.conn_id].state<<std::endl;
 
@@ -502,6 +504,7 @@ void EventHandler::checkOrphanConns(long int now)
 	  connState[conn_id] = EST;
 	  (*connStats)[conn_id].state = EST;
 	  (*connStats)[conn_id].last_completed++;
+	  (*connStats)[conn_id].started = now;
 	  getNewEvents(sit->second);
 	  auto dit = it;
 	  it++;
@@ -680,6 +683,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		      connState[conn_id] = EST;
 		      (*connStats)[conn_id].state = EST;
 		      (*connStats)[conn_id].last_completed++;
+		      (*connStats)[conn_id].started = now;
 		      if (DEBUG)
 			(*out)<<"Accepted conn "<<conn_id<<" state is now "<<connState[conn_id]<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
 		      getNewEvents(conn_id);
@@ -703,6 +707,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	      connState[conn_id] = EST;
 	      (*connStats)[conn_id].state = EST;
 	      (*connStats)[conn_id].last_completed++;
+	      (*connStats)[conn_id].started = now;
 	      if (DEBUG)
 		(*out)<<"Connected successfully, conn "<<conn_id<<" state is now "<<connState[conn_id]<<" last completed 4 "<<(*connStats)[conn_id].last_completed<<std::endl;
 	      getNewEvents(conn_id);
@@ -927,7 +932,7 @@ long int EventHandler::acceptNewConnection(struct epoll_event *poll_e, long int 
     if(it == strToConnID.end()) {
       (*out) << "Got connection but could not look up connID." << std::endl;
 
-      orphanConn[connString] = newSockfd;
+      orphanConn[connString] = newSockfd; // jelena remember start time
       return -2; 
     }
     long int conn_id = it->second;

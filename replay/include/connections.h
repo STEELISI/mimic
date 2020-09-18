@@ -7,6 +7,8 @@ enum conn_state {INIT, LISTENING, CONNECTING, EST, DONE};
 struct stats
 {
   enum conn_state state = INIT;
+  long int started = 0;
+  long int completed = 0;
   int total_events = 0;
   int last_completed = -1;
   int delay = 0;

@@ -22,7 +22,7 @@ std::condition_variable fileHandlerCV;
 bool loadMoreFileEvents = true;
 std::string servString = "";
 std::string serverIP = "";
-
+auto startTime = 0;
 
 void serverSocketsThread(std::string serverIP, int numConns, EventQueue* eq) {
     int sockets[numConns]; 
@@ -215,7 +215,7 @@ void print_stats(int flag)
     {
       total++;
       if (flag)
-	myfile<<"Conn "<<it->first<<" state "<<it->second.state<<" total events "<<it->second.total_events<<" last event "<<it->second.last_completed<<" delay "<<it->second.delay<<std::endl;
+	myfile<<"Conn "<<it->first<<" state "<<it->second.state<<" total events "<<it->second.total_events<<" last event "<<it->second.last_completed<<" delay "<<it->second.delay<<" started "<<it->second.started<<" completed "<<it->second.completed<<std::endl;
       if (it->second.state == DONE)
 	{
 	  completed++;
@@ -232,8 +232,8 @@ void print_stats(int flag)
 void signal_callback_handler(int signum) {
   std::cout << "Caught signal " << signum << std::endl;
    // Terminate program
-   print_stats(true);
-   exit(signum);
+  print_stats(true);
+  exit(signum);
 }
 
 void waitForPeer()
@@ -505,7 +505,8 @@ int main(int argc, char* argv[]) {
       waitForPeer();
 
     std::chrono::high_resolution_clock::time_point startPoint = std::chrono::high_resolution_clock::now();
-
+    startTime = std::chrono::duration_cast<std::chrono::milliseconds>(startPoint.time_since_epoch()).count();
+  
     for (int i=0; i<numThreads.load(); i++)
       {
 	eventHandlerThread[i] = new std::thread(&EventHandler::loop, eh[i], startPoint);

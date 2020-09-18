@@ -47,33 +47,6 @@ void EventHandler::processAcceptEvents(long int now) {
       }
 }
 
-bool EventHandler::readyForEvent(long int connID, long int delta, long int now) {
-   
-    /* Make sure we have a valid socket for this event. */
-    auto it0 = connToSockfdIDMap.find(connID);
-    if(it0 == connToSockfdIDMap.end()) return false;
-
-    /* Check if we're waiting on events. */
-    auto it1 = connToWaitingToRecv.find(connID);
-    if(it1 != connToWaitingToRecv.end()) {
-        if(it1->second > 0) return false;
-    }
-    
-    /* Check if we're waiting to send. */
-    auto it2 = connToWaitingToSend.find(connID);
-    if(it2 != connToWaitingToSend.end()) {
-        if(it2->second > 0) return false;
-    } 
-    
-    /* Check on the time. */
-    auto it3 = connToLastCompletedEvent.find(connID);
-    if(it3 != connToLastCompletedEvent.end()) {
-        if(now - it3->second < delta) return false;
-    }
-    
-    return true;
-}
-
 void EventHandler::newConnectionUpdate(int sockfd, long int connID, long int planned, long int now) {
   
   sockfdToConnIDMap[sockfd] = connID;
@@ -94,7 +67,6 @@ void EventHandler::newConnectionUpdate(int sockfd, long int connID, long int pla
 	}
       connToLastPlannedEvent[connID] = now;
     }
-  connToLastCompletedEvent[connID] = now;
   if (DEBUG)
     (*out)<<"Conn "<<connID<<" time now "<<now<<" planned time "<<connToLastPlannedEvent[connID]<<" delay "<< connToDelay[connID]<<std::endl;
 }
@@ -110,7 +82,6 @@ void EventHandler::connectionUpdate(long int connID, long int planned, long int 
       connToLastPlannedEvent[connID] = now;      
       (*connStats)[connID].delay = connToDelay[connID];
     }
-  connToLastCompletedEvent[connID] = now;
   if (DEBUG)
     (*out)<<"EConn "<<connID<<" time now "<<now<<" planned time "<<connToLastPlannedEvent[connID]<<" delay "<< connToDelay[connID]<<std::endl;
 }
@@ -403,7 +374,11 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      if (DEBUG)
 		(*out)<<" Deleting stats for conn "<<dispatchJob.conn_id<<"\n";
 	      serverToCounter[connToServerString[dispatchJob.conn_id]] --;
-	      connToServerString.erase(dispatchJob.conn_id); 
+	      connToServerString.erase(dispatchJob.conn_id);
+	      connToDelay.erase(dispatchJob.conn_id);
+	      connState.erase(dispatchJob.conn_id);
+	      connTime->erase(dispatchJob.conn_id);
+	      connToEventQueue.erase(dispatchJob.conn_id); 
 	      sockfdToConnIDMap.erase(dispatchJob.sockfd);
 	      connToSockfdIDMap.erase(dispatchJob.conn_id);
 	      connToWaitingToRecv.erase(dispatchJob.conn_id);
@@ -423,6 +398,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      if (DEBUG)
 		(*out)<<"Stopping server "<<dispatchJob.serverString<<" time "<<now<<" sock "<<serverToSockfd[dispatchJob.serverString]<<std::endl;
 	      close(serverToSockfd[dispatchJob.serverString]); // should account for delays in connections
+	      serverToCounter.erase(dispatchJob.serverString);
 	    }
 	  // Try again after a while
 	  else
@@ -997,11 +973,9 @@ EventHandler::EventHandler(EventNotifier* loadMoreNotifier, std::unordered_map<l
     connState = {};
     connToWaitingToRecv = {};
     connToWaitingToSend = {};
-    connToLastCompletedEvent = {};
     serverToCounter = {};
     connToServerString = {};
     connTime = c2time;
-    listenerTime = l2time;
     
     eventsToHandle = new EventHeap();
     myPollHandler = new PollHandler(DEBUG);

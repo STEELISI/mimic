@@ -64,7 +64,6 @@ class EventHandler {
 	std::unordered_map<long int, int> connToDelay;
 	std::unordered_map<long int, long int> connToLastPlannedEvent;
 	std::unordered_map<long int, conn_state> connState;
-        std::unordered_map<long int, long int> connToLastCompletedEvent;
         std::unordered_map<long int, EventHeap> connToEventQueue;
 	std::unordered_map<long int, bool> connToStalled;
 	std::unordered_map<long int, long int>* connTime;
@@ -79,7 +78,6 @@ class EventHandler {
 	void storeConnections();        
         void processFileEvents();
         void addWait();
-        bool readyForEvent(long int connID, long int delta, long int now);
         void dispatch(Event dispatchJob, long int now);
         void newConnectionUpdate(int sockfd, long int connID, long int planned, long int now);
 	void connectionUpdate(long int connID, long int planned, long int now);

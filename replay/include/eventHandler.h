@@ -87,6 +87,7 @@ class EventHandler {
 	void getNewEvents(long int conn_id);
 	void checkStalledConns(long int now);
 	void checkOrphanConns(long int now);
+	void checkQueues();
 	bool DEBUG = 0;
 	
     public:

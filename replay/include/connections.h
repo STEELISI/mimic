@@ -11,6 +11,7 @@ struct stats
   long int completed = 0;
   int total_events = 0;
   int last_completed = -1;
+  int thread = -1;
   int delay = 0;
 };
 

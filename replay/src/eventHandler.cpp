@@ -486,6 +486,23 @@ void EventHandler::checkStalledConns(long int now)
     }
 }
 
+void EventHandler::checkQueues()
+{
+  for (auto it = connToEventQueue.begin(); it !=  connToEventQueue.end();)
+    {
+      long int conn_id = it->first;
+      if ((*connStats)[conn_id].thread != -1 && (*connStats)[conn_id].thread != myID)
+	{
+	  auto eit = it;
+	  it++;
+	  connToEventQueue.erase(eit);
+	}
+      else
+	it++;
+    }
+}
+
+  
 void EventHandler::checkOrphanConns(long int now)
 {
   // Go through conns and try to load more events if there are any
@@ -505,6 +522,7 @@ void EventHandler::checkOrphanConns(long int now)
 	  (*connStats)[conn_id].state = EST;
 	  (*connStats)[conn_id].last_completed++;
 	  (*connStats)[conn_id].started = now;
+	  (*connStats)[conn_id].thread = myID;
 	  getNewEvents(sit->second);
 	  auto dit = it;
 	  it++;
@@ -533,9 +551,11 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
   int eventsHandled = 0;
   int idle = 0;
   int ITHRESH = 10;
+  int rounds = 0;
   
   while(isRunning.load()) {
-
+    
+    rounds++;
     fileEvents = incomingFileEvents->getLength();
     
     if (DEBUG)
@@ -684,6 +704,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		      (*connStats)[conn_id].state = EST;
 		      (*connStats)[conn_id].last_completed++;
 		      (*connStats)[conn_id].started = now;
+		      (*connStats)[conn_id].thread = myID;
 		      if (DEBUG)
 			(*out)<<"Accepted conn "<<conn_id<<" state is now "<<connState[conn_id]<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
 		      getNewEvents(conn_id);
@@ -811,6 +832,10 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	  (*out)<<"Checking stalled conns "<<std::endl;
 	checkStalledConns(now);
 	checkOrphanConns(now);
+	if (rounds % 100 == 0)
+	  {
+	    checkQueues();
+	  }
 	if (eventsHandled == 0)
 	  {
 	    idle++;

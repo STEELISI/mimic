@@ -18,6 +18,20 @@
 #include "pollHandler.h"
 #include "mimic.h"
 
+struct connData
+{
+  std::string serverString = "";
+  int sockfd = -1;
+  long int waitingToRecv = 0;
+  long int waitingToSend = 0;
+  long int delay = 0;
+  long int lastPlannedEvent = 0;
+  EventHeap eventQueue;
+  long int time = 0;
+  enum conn_state state = INIT;
+  bool stalled = false;
+};
+
 
 class EventHandler {
     private:
@@ -54,19 +68,10 @@ class EventHandler {
         /* Data management structures. */
         ConnectionPairMap * connIDToConnectionMap;
         stringToConnIDMap strToConnID;
+	std::unordered_map<long int, connData> myConns;
         std::unordered_map<int, long int> sockfdToConnIDMap;
 	std::unordered_map<std::string, long int> serverToSockfd;
 	std::unordered_map<std::string, long int> serverToCounter;
-	std::unordered_map<long int, std::string> connToServerString;
-        std::unordered_map<long int, int> connToSockfdIDMap;
-        std::unordered_map<long int, int> connToWaitingToRecv;
-        std::unordered_map<long int, int> connToWaitingToSend;
-	std::unordered_map<long int, int> connToDelay;
-	std::unordered_map<long int, long int> connToLastPlannedEvent;
-	std::unordered_map<long int, conn_state> connState;
-        std::unordered_map<long int, EventHeap> connToEventQueue;
-	std::unordered_map<long int, bool> connToStalled;
-	std::unordered_map<long int, long int>* connTime;
 	std::unordered_map<std::string, long int>* listenerTime;
 	std::unordered_map<std::string, long int> srvStarted;
 	std::unordered_map<std::string, long int> orphanConn;

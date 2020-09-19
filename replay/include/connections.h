@@ -1,5 +1,6 @@
 #ifndef CONNECTIONS_H
 #define CONNECTIONS_H
+
 #include "mimic.h"
 
 enum conn_state {INIT, LISTENING, CONNECTING, EST, DONE};

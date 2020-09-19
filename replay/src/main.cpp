@@ -232,6 +232,7 @@ void print_stats(int flag)
 void signal_callback_handler(int signum) {
   std::cout << "Caught signal " << signum << std::endl;
    // Terminate program
+  isRunning.store(false);
   print_stats(true);
   exit(signum);
 }

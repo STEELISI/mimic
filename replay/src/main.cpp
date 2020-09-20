@@ -334,67 +334,45 @@ int main(int argc, char* argv[]) {
     std::string eventFile = "";
 
     bool DEBUG = false;
-    
-    for(int i=1; i<argc; ++i) {
-      std::string arg = argv[i];
-        
-        /* We have an option. */
-      if((arg.starts_with("-"))) {
-            if(true) {
-                if((arg == "-t")) {
-                    try {
-                        if(arg == "-t") {
-			  numThreads.store(std::stoi(argv[i+1]));
-			  i++;
-                        }
-                    }
-                    catch(std::invalid_argument& e) {
-                        std::cerr << "Failed to convert argument for " << arg  << std::endl;
-                        exit(-1);
-                    }
-                }
-                else if(arg == "-s") {
-		  std::cout<<"This is server\n";
-		  isServer = true;
-		  serverIP = argv[i+1];
-		  i++;
-                }
-                else if(arg == "-i") {
-                    ipFile = argv[i+1];
-                    i++;
-                }
-		else if(arg == "-d") {
-		  DEBUG = true;
-                }
-                else if(arg == "-c") {
-		  serverIP = argv[i+1];
-		  i++;
-                }
-		else if(arg == "-e") {
-		  eventFile = argv[i+1];
-		  i++;
-                }
-            }
-            else {
-                std::cerr << arg << " requires argument." << std::endl;
-                exit(-1);
-            }
+
+    int c;
+    while ((c = getopt (argc, argv, "e:s:c:t:i:md")) != -1)
+    switch (c)
+      {
+      case 's':
+	std::cout<<"This is server\n";
+	isServer = true;
+	serverIP = optarg;
+	break;
+      case 'i':
+	ipFile = optarg;
+	break;
+      case 'd':
+	DEBUG = true;
+	break;
+      case 't':
+	numThreads.store(std::stoi(optarg));
+	break;
+      case 'c':
+	serverIP = optarg;
+	break;
+      case 'e':
+	eventFile = optarg;
+	break;
+      case '?':
+        if (optopt == 'i' || optopt == 's' || optopt == 'e' || optopt == 'c' || optopt == 't')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        return 1;
+      default:
+        abort ();
       }
-      /* Arg tells us what role we should play. (
-	 else if((arg == "-C") || (arg == "-S")) {
-            if(roleFlag) {
-                std::cerr << "Given both -C and -S: choose one roll Server (-S) or Client (-C)" << std::endl;
-                exit(-1);
-            }
-            roleFlag = true;
-            if(arg == "-S") isServer = true;
-        }*/
-        
-        /* We don't recognize this argument. */
-        else {
-	  std::cerr << "Usage: " << argv[0] << " {-i IPFile} {-c serverIP} {-s serverIP} {-e eventFile} {-t numThreads} wrong arg " <<arg<<std::endl;
-        }
-    }
+    
     char ss[50];
     sprintf(ss, "%s:%d", serverIP.c_str(), SRV_PORT);
     servString = ss;

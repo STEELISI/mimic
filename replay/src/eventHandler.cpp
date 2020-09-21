@@ -173,7 +173,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      struct sockaddr_in saddr = getAddressFromString(dispatchJob.serverString);
 	      int sockfd = getIPv4TCPSock((const struct sockaddr_in *)&caddr);
 	      if (DEBUG)
-		(*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
+		(*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
 	      if(connect(sockfd, (const struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) == -1) {
 		if (DEBUG)
 		  (*out)<<"Didn't connect right away\n";
@@ -269,6 +269,10 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  if(strToConnID.find(dispatchJob.connString) == strToConnID.end())
 	    {
 	      strToConnID[dispatchJob.connString] = dispatchJob.conn_id;
+	      connData cd;
+	      stats cs;
+	      //myConns[dispatchJob.conn_id] = cd;
+	      //(*connStats)[dispatchJob.conn_id] = cs;
 	      if (DEBUG)
 		(*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<std::endl;
 	    }
@@ -397,7 +401,9 @@ void EventHandler::storeConnections()
       if (DEBUG)
 	(*out)<<"Stored connection "<<constring<<" id "<<conn_id<<std::endl;
       connData cd;
+      stats cs;
       myConns[conn_id] = cd;
+      //(*connStats)[conn_id] = cs;
       constring.clear();
     }
     else {
@@ -580,10 +586,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	//(*out)<<"Handled "<<fileEventsHandledCount<<" max "<<maxQueuedFileEvents<<" last event "<<lastEventCountWhenRequestingForMore<<" fehc "<<fileEventsHandledCount<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
 	//if((fileEventsHandledCount > (maxQueuedFileEvents/10) || incomingFileEvents->getLength() < maxQueuedFileEvents/2) && requested == false) this works
 	if (DEBUG)
-	  (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<std::endl;
-	if((fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0))//  && requested == false)
-	  {//
-	  //if((fileEventsHandledCount > (fileEvents/2) || incomingFileEvents->getLength() < maxQueuedFileEvents/2 && lastEventCountWhenRequestingForMore + fileEvents/10 < fileEventsHandledCount)) {
+	  (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<" eventstohandle "<<eventsToHandle->getLength()<<std::endl;
+	if((fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents)
+	  {
 	  lastEventCountWhenRequestingForMore += fileEventsHandledCount;
 	  if (DEBUG)
 	    (*out)<<"requesting more events, last "<<lastEventCountWhenRequestingForMore<<" file events "<<fileEvents<<" handled "<<fileEventsHandledCount<<" comparisong between "<<fileEventsHandledCount<<" and "<<fileEvents/2<<" is "<<(fileEventsHandledCount > fileEvents/2)<<" requested is "<<requested<<std::endl;

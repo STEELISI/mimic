@@ -36,6 +36,8 @@ bool returnLoadMoreFileEvents();
 extern std::atomic<bool> isRunning;
 extern std::atomic<bool> isInitd;
 extern std::atomic<int> numThreads;
+extern std::atomic<bool> isServer;
+extern std::atomic<bool> makeup;
 
 static std::string EventNames[14] = {"ACCEPT","ACCEPTED", "CONNECT", "CONNECTED", "CLOSE", "RECV", "RECVD", "WAIT", "SEND", "SENT", "SRV_START", "SRV_STARTED", "SRV_END", "NONE"};
 
@@ -79,6 +81,8 @@ class Event {
         long int conn_id = -1;
         long int event_id = -1;
         long int value = 0;		/* What this value holds depends on what type of event this is. */
+	Event();
+	Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle, EventType t, long int cid, long int eid, long int v);
 };
 
 

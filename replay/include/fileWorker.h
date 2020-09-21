@@ -35,7 +35,10 @@ class FileWorker {
         PollHandler* loadEventsPollHandler;
     
         long int fileEventsAddedCount;
-		
+	long int my_conn_id;
+	long int my_time;
+	unsigned short int my_sport;
+	unsigned short int my_cport;
 	/* For logging */
 	std::ofstream* out;
 	
@@ -53,6 +56,7 @@ class FileWorker {
 	bool isProcessed = false;
 	
         std::unordered_set<std::string> myIPs;
+	std::unordered_set<std::string> foreignIPs;
         std::unordered_set<long int> myConnIDs;
         std::unordered_map<long int, long int> connIDToLastEventTimeMap;
         std::unordered_map<std::string, bool> srvStringToStartBoolMap;
@@ -83,6 +87,7 @@ class FileWorker {
 	
         std::string connectionFile;
         std::string IPListFile;
+	std::string foreignIPFile;
         std::string trim(const std::string& str, const std::string& whitespace = " \t");
         int loopedCount = 0;
         long int loopDuration = 0;
@@ -101,7 +106,7 @@ class FileWorker {
 
 
     public:
-        FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** out, EventQueue* accept, std::string& ipFile, std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMap=true);
+        FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** out, EventQueue* accept, std::string& ipFile, std::string& forFile, std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMap=true);
         ~FileWorker();
         bool startup();
         void loop(std::chrono::high_resolution_clock::time_point startTime);

@@ -4,17 +4,20 @@
 #include "mimic.h"
 
 
-FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** outQ, EventQueue* accept, std::string& ipFile, std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMapFlag) {
+FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** outQ, EventQueue* accept, std::string& ipFile, std::string& forFile,  std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMapFlag) {
   
     fileEventsAddedCount = 0;
     useMMap = useMMapFlag;
-
+    my_conn_id = 0;
+    my_time = 10000;
+    my_sport = 50000;
+    my_cport = 10000;
+    
     connTime = c2time;
     listenerTime = l2time;
     connStats = cs;
     DEBUG = debug;
     out = new std::ofstream(myname);
-    //DEBUG = false;
 
     threadToEventCount = {};
     threadToConnCount = {};
@@ -32,6 +35,7 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     outEvents = outQ;
     acceptEvents = accept;
     IPListFile = ipFile;
+    foreignIPFile = forFile;
     eventsFiles = eFiles;
 
 
@@ -50,6 +54,8 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     }
     
     /* If we should use mmap, mmap our files now. */
+    if (makeup.load())
+      return;
     if(useMMap) {
         for(currentEventFile = eventsFiles.begin(); currentEventFile != eventsFiles.end(); ++currentEventFile) {
            /* Get the file size. */
@@ -203,6 +209,126 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
       {
 	return;
       }
+    // Should we make up traffic or read from file?
+    if (makeup.load())
+      {
+	if (DEBUG)
+	  (*out)<<"Making up events\n";
+	int numconns = 100;
+	int numevents = 200;
+	int numbytes = 1000;
+
+	/*
+	for(auto it = myIPs.begin(); it != myIPs.end(); it++)
+	  (*out)<<"My IP "<<*it<<std::endl;
+	for(auto it = foreignIPs.begin(); it != foreignIPs.end(); it++)
+	  (*out)<<"Foreign IP "<<*it<<std::endl;
+	*/
+	auto it = myIPs.begin();
+	std::string myIP = *it;
+	it = foreignIPs.begin();
+	std::string peerIP = *it;
+	if (DEBUG)
+	  (*out)<<"Makeup traffic between "<<myIP<<" and "<<peerIP<<std::endl;
+	
+	std::string server, client;
+	int sport, cport;
+	while(true)
+	  {
+	    for(int i=0; i<numconns; i++)
+	      {
+		EventType type = NONE;
+		std::string serverString, connString;
+		if (i < numconns/2)
+		  {
+		    if (isServer)
+		      {
+			server = peerIP;
+			client = myIP;
+		      }
+		    else
+		      {
+			client = peerIP;
+			server = myIP;
+		      }
+		  }
+		else
+		  {
+		    if (!isServer)
+		      {
+			server = peerIP;
+			client = myIP;
+		      }
+		    else
+		      {
+			client = peerIP;
+			server = myIP;
+		      }
+		  }
+		// Create initial connection
+		if (server == peerIP)
+		  type = CONNECT;
+		else
+		  type = SRV_START;
+
+		// Connect		
+		serverString = server + ":" + std::to_string(my_sport+i);
+		connString = client + ":" + std::to_string(my_cport+i)+","+serverString;
+		long int time = my_time;
+		if (type == SRV_START)
+		  time -= SRV_UPSTART;
+		Event e(serverString, connString, -1, time, 0, type, my_conn_id+i, -1, 0);
+		if (DEBUG)
+		  (*out)<<"Conn "<<my_conn_id+i<<" event of type "<<EventNames[type]<<" connstring "<<connString<<" servstring "<<serverString<<" time "<<time<<std::endl;
+		shortTermHeap->addEvent(e);
+		lastEventTime = my_time;
+		
+		myConnIDs.insert(my_conn_id+i);
+	      
+		/* Fill out connIDToConnectionPairMap */
+		connectionPair cp = connectionPair(client, my_cport+i, server, my_sport+i);
+		connIDToConnectionPairMap[my_conn_id+i] = std::make_shared<connectionPair>(cp);
+		
+		long int eid = 0;
+		for (int j=0; j<numevents;j++)
+		  {
+		    if (server == peerIP)
+		      {
+			Event e1(serverString, connString, -1, time+j, 0, SEND, my_conn_id+i, eid+4*j, numbytes);
+			shortTermHeap->addEvent(e1);
+			if (DEBUG)
+			  (*out)<<"Conn "<<my_conn_id+i<<" event of type SEND connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j<<" eid "<<eid+4+j<<std::endl;
+			Event e2(serverString, connString, -1, time+j+2, 0, RECV, my_conn_id+i, eid+4*j+2, numbytes);
+			shortTermHeap->addEvent(e2);
+			if (DEBUG)
+			  (*out)<<"Conn "<<my_conn_id+i<<" event of type RECV connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+2<<" eid "<<eid+4*j+2<<std::endl;
+		      }
+		    else
+		      {
+			Event e1(serverString, connString, -1, time+j+1, 0, RECV, my_conn_id+i, eid+4*j+1, numbytes);
+			shortTermHeap->addEvent(e1);
+			if (DEBUG)
+			  (*out)<<"Conn "<<my_conn_id+i<<" event of type RECV connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+1<<" eid "<<eid+4*j+1<<std::endl;
+			Event e2(serverString, connString, -1, time+j+3, 0, SEND, my_conn_id+i, eid+4*j+3, numbytes);
+			shortTermHeap->addEvent(e2);
+			if (DEBUG)
+			  (*out)<<"Conn "<<my_conn_id+i<<" event of type SEND connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+3<<" eid "<<eid+4+j+3<<std::endl;
+		      }
+		    time += 4;
+		  }
+		Event ec(serverString, connString, -1, time, 0, CLOSE, my_conn_id+i, eid+numevents*4, 0);
+		shortTermHeap->addEvent(ec);
+		if (DEBUG)
+		  (*out)<<"Conn "<<my_conn_id+i<<" event of type CLOSE connstring "<<connString<<" servstring "<<serverString<<" time "<<my_time<<" eid "<<eid<<std::endl;
+	      }
+	    eventsProduced += numconns*numevents;
+	    my_time += 1000;
+	    my_conn_id += numconns;
+	    my_sport += numconns;
+	    my_cport += numconns;
+	    return;
+	  }
+      }
     // We're starting a new file
     if (lastLine == 0)
       {
@@ -212,12 +338,10 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	  eventData = loadMMapFile(*mmappedFilesItr, 8, eventsToGet);
 	}
 	else {
-	  //std::vector <std::vector <std::string>> eventData = loadFile(currentEventIFStream, 8, eventsToGet);
 	  eventData = loadFile(*eventIFStreamsItr, 8, eventsToGet);
 	}
 	
 	/* We've probably reached the end of the file. */
-	// Jelena switch to new file
 	eventIFStreamsItr++;
 	mmappedFilesItr++;
 
@@ -264,24 +388,17 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	    sprintf(ports, "%d", sport);
 	    std::string servString = dst + ":" + portd;
 	    std::string connString = src + ":" + ports+","+dst+":"+portd;
-	    //if (DEBUG)
-	    //(*out) << "Check if IP '" << src << "' and '" << dst << "' are in my connections." << std::endl;
+	    
 	    if(isMyIP(src) || isMyIP(dst)) {
 	      /* Add this connid to our ids.*/
 	      if (DEBUG)
 		(*out) << "Adding " << connID << " to my connection ids." << std::endl;
 	      
 	      myConnIDs.insert(connID);
-	      //if (DEBUG)
-	      //(*out) << "1\n";
 	      
 	      /* Fill out connIDToConnectionPairMap */
 	      connectionPair cp = connectionPair(src, sport, dst, dport);
-	      //if (DEBUG)
-	      //(*out) << "2\n";
 	      connIDToConnectionPairMap[connID] = std::make_shared<connectionPair>(cp);
-	      //if (DEBUG)
-	      //(*out) << "3\n";
 	      /* Add an event to start this connection. */
 	      Event e;
 	      e.serverString = servString;
@@ -428,21 +545,42 @@ bool FileWorker::startup() {
 
     /* Load our IPs. */
     myIPs = {};
-    std::ifstream infile;
-    try {
-        infile.open(IPListFile.c_str(), std::ios::in);
-    }
-    catch (std::ios_base::failure& e) {
-        std::cerr << e.what() << std::endl;
-    }
-    std::vector <std::vector <std::string>> ipData = loadFile(&infile, 1, -1);
-    for(std::vector<int>::size_type i = 0; i != ipData.size(); i++) {
-        if (DEBUG)
-	  (*out) << "IP in file: '" << ipData[i][0] <<"'"<< std::endl;
-        std::string ip = trim(ipData[i][0]);
-        myIPs.insert(ip);
-    }    
-    infile.close();
+    foreignIPs = {};
+    for (int f = 0; f < 2; f++)
+      {
+	std::ifstream infile;
+	try {
+	  if (f == 0)
+	    {
+	      (*out)<<"Opened my file "<<IPListFile<<"\n";
+	      infile.open(IPListFile.c_str(), std::ios::in);
+	    }
+	  else
+	    {
+	      if (foreignIPFile != "")
+		{
+		  (*out)<<"Opened foreign file "<<foreignIPFile<<"\n";
+		  infile.open(foreignIPFile.c_str(), std::ios::in);
+		}
+	      else
+		break;
+	    }
+	}
+	catch (std::ios_base::failure& e) {
+	  std::cerr << e.what() << std::endl;
+	}
+	std::vector <std::vector <std::string>> ipData = loadFile(&infile, 1, -1);
+	for(std::vector<int>::size_type i = 0; i != ipData.size(); i++) {
+	  if (DEBUG)
+	    (*out) << "IP in file: '" << ipData[i][0] <<"'"<< std::endl;
+	  std::string ip = trim(ipData[i][0]);
+	  if (f == 0)
+	    myIPs.insert(ip);
+	  else
+	    foreignIPs.insert(ip);
+	}    
+	infile.close();
+      }
     
     /* Set ourselves up for the first event file.*/
     /* XXX Should check if our event files are time ordered. */
@@ -496,8 +634,7 @@ void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) 
 	    {
 	      t = findMin();
 	      if (DEBUG)
-		(*out)<<"Found new thread "<<t<<" for conn "<<e.conn_id<<std::endl;
-	      
+		(*out)<<"Found new thread "<<t<<" for conn "<<e.conn_id<<std::endl;	      
 
 	      if (e.type == SRV_START)
 		{

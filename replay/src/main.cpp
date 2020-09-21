@@ -23,6 +23,8 @@ bool loadMoreFileEvents = true;
 std::string servString = "";
 std::string serverIP = "";
 auto startTime = 0;
+std::atomic<bool> makeup = false;
+std::atomic<bool> isServer = false;
 
 void serverSocketsThread(std::string serverIP, int numConns, EventQueue* eq) {
     int sockets[numConns]; 
@@ -47,7 +49,7 @@ void serverSocketsThread(std::string serverIP, int numConns, EventQueue* eq) {
         /* Bind. */
         struct sockaddr_in sa;
         sa.sin_family = AF_INET;
-        inet_pton(AF_INET, serverIP.c_str(), &(sa.sin_addr));
+        inet_pton(AF_INET, "0.0.0.0", &(sa.sin_addr));
         sa.sin_port = htons(SRV_PORT + i);
         std::cout << "Binding to port " << SRV_PORT + i << std::endl;
         if(bind(sockets[i], (struct sockaddr *)&sa, sizeof(sa)) <0) {
@@ -325,10 +327,10 @@ int main(int argc, char* argv[]) {
 
   
     int numConns = 1000;
-    bool isServer = false;
     bool roleFlag = false;
     
     std::string ipFile = "";
+    std::string forFile = "";
     std::string connFile = "";
     
     std::string eventFile = "";
@@ -336,13 +338,17 @@ int main(int argc, char* argv[]) {
     bool DEBUG = false;
 
     int c;
-    while ((c = getopt (argc, argv, "e:s:c:t:i:md")) != -1)
+    while ((c = getopt (argc, argv, "e:sc:t:i:m:d")) != -1)
     switch (c)
       {
+      case 'm':
+	makeup = true;
+	forFile = optarg;
+	std::cout<<"Foreign file "<<forFile<<std::endl;
+	break;
       case 's':
 	std::cout<<"This is server\n";
 	isServer = true;
-	serverIP = optarg;
 	break;
       case 'i':
 	ipFile = optarg;
@@ -360,7 +366,7 @@ int main(int argc, char* argv[]) {
 	eventFile = optarg;
 	break;
       case '?':
-        if (optopt == 'i' || optopt == 's' || optopt == 'e' || optopt == 'c' || optopt == 't')
+        if (optopt == 'i' || optopt == 'e' || optopt == 'c' || optopt == 't' || optopt == 'm')
           fprintf (stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint (optopt))
           fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -380,6 +386,11 @@ int main(int argc, char* argv[]) {
     
     if(ipFile == "") {
         std::cerr << "We need an IPFile argument." << std::endl;
+        exit(-1);
+    }
+
+    if(forFile == "" && makeup) {
+        std::cerr << "We need an foreign file argument to make up traffic." << std::endl;
         exit(-1);
     }
         
@@ -420,7 +431,7 @@ int main(int argc, char* argv[]) {
 
     gethostname(myName, SHORTLEN);
     sprintf(filename, "file.%s.txt", myName);
-    FileWorker* fw = new FileWorker(loadMoreNotifier, &c2time, &l2time, fileQ, acceptQ, ipFile, eFiles, &connStats, numThreads.load(), DEBUG, filename, true);
+    FileWorker* fw = new FileWorker(loadMoreNotifier, &c2time, &l2time, fileQ, acceptQ, ipFile, forFile, eFiles, &connStats, numThreads.load(), DEBUG, filename, true);
     fw->startup();
     ConnectionPairMap * ConnIDtoConnectionPairMap = fw->getConnectionPairMap();
     //FileWorker* fw2 = new FileWorker(loadMoreNotifier, fileQ2, acceptQ, &c2eq2, ipFile, connFile2, eFiles2);
@@ -447,9 +458,7 @@ int main(int argc, char* argv[]) {
     numThreads.store(n);
     std::cout<<"Final num threads "<<numThreads.load()<<std::endl;
     EventHandler** eh = (EventHandler**)malloc(numThreads.load()*sizeof(EventHandler*));
-    
-
-  
+      
     for (int i=0;i<numThreads.load();i++)
       {
 	sprintf(filename, "thread.%s.%d.txt", myName,i);

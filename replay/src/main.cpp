@@ -17,6 +17,9 @@
 std::atomic<bool> isRunning = false;
 std::atomic<bool> isInitd = false;
 std::atomic<int> numThreads = 1;
+std::atomic<int> numconns = 1;
+std::atomic<int> numbytes = 100;
+std::atomic<int> numevents = 1;
 std::mutex fileHandlerMTX;
 std::condition_variable fileHandlerCV;
 bool loadMoreFileEvents = true;
@@ -338,9 +341,18 @@ int main(int argc, char* argv[]) {
     bool DEBUG = false;
 
     int c;
-    while ((c = getopt (argc, argv, "e:sc:t:i:m:d")) != -1)
+    while ((c = getopt (argc, argv, "e:sc:t:i:m:dn:b:E:")) != -1)
     switch (c)
       {
+      case 'n':
+	numconns.store(atoi(optarg));
+	break;
+      case 'b':
+	numbytes.store(atoi(optarg));
+	break;
+      case 'E':
+	numevents.store(atoi(optarg));
+	break;
       case 'm':
 	makeup = true;
 	forFile = optarg;

@@ -25,10 +25,12 @@ class PollHandler {
   public:
     PollHandler(bool debug);
     ~PollHandler();
+    int rssize();
+    bool checkForRead(int fd);
     void watchForRead(int fd);
     void watchForWrite(int fd);
     void stopWatching(int fd);
-    void waitForEvents(int timeout=-1);
+    int waitForEvents(int timeout=-1);
     bool nextEvent(struct epoll_event *e);
 };
 

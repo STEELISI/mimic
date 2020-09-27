@@ -484,9 +484,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
   char* buf = (char*)malloc(MAXLEN);
   memset(buf, 'a', MAXLEN);
   if (DEBUG)
-  (*out)<<"EH: looping, incoming file events "<<incomingFileEvents<<"\n";
-  if (DEBUG)
-  (*out)<<"EH: Is running is "<<isRunning.load()<<std::endl;
+    (*out)<<"EH: Is running is "<<isRunning.load()<<std::endl;
   long int fileEvents = 0;
   bool requested;
   long int processedFileEvents = 0;
@@ -558,238 +556,243 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     //(*out)<<"Next heap time "<<nextHeapEventTime<<" now "<<now<<std::endl;
     
   
-	while(nextHeapEventTime <= now && nextHeapEventTime >= 0) {
-	  Event dispatchJob = eventsToHandle->nextEvent();
-	  eventsHandled++;
-	  fileEventsHandledCount++;
-	  if(true){ // this was if (bool = got a job)
-	    if (DEBUG)
-	      (*out)<< "Heap Event handler GOT JOB " << EventNames[dispatchJob.type] <<" server "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" now "<<now<<" value "<<dispatchJob.value<<" events handled "<<fileEventsHandledCount<<" state "<<(*connStats)[dispatchJob.conn_id].state<<std::endl;
-
-                dispatch(dispatchJob, now);
-                nextHeapEventTime = eventsToHandle->nextEventTime();
-                //(*out)<< "EVENT HANDLER: Pulled " << fileEventsHandledCount << " events. Next event time is " << nextEventTime << std::endl;
-            }
-            else {
-	      if (DEBUG)
-                (*out)<< "We think we have a job, but failed to pull it? " << std::endl;
-            }
-	}
-
-	// Should account for eventsHandled here too
-        processAcceptEvents(now);
-        now = msSinceStart(startTime);
-
-	// Check if we should ask for more events
-	// if we handled 1/10th of what is max for our thread
-	
-	//(*out)<<"Handled "<<fileEventsHandledCount<<" max "<<maxQueuedFileEvents<<" last event "<<lastEventCountWhenRequestingForMore<<" fehc "<<fileEventsHandledCount<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
-	//if((fileEventsHandledCount > (maxQueuedFileEvents/10) || incomingFileEvents->getLength() < maxQueuedFileEvents/2) && requested == false) this works
+    while(nextHeapEventTime <= now && nextHeapEventTime >= 0) {
+      Event dispatchJob = eventsToHandle->nextEvent();
+      eventsHandled++;
+      
+      fileEventsHandledCount++;
+      if(true){ // this was if (bool = got a job)
 	if (DEBUG)
-	  (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<" eventstohandle "<<eventsToHandle->getLength()<<std::endl;
-	if((fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents)
-	  {
-	  lastEventCountWhenRequestingForMore += fileEventsHandledCount;
-	  if (DEBUG)
-	    (*out)<<"requesting more events, last "<<lastEventCountWhenRequestingForMore<<" file events "<<fileEvents<<" handled "<<fileEventsHandledCount<<" comparisong between "<<fileEventsHandledCount<<" and "<<fileEvents/2<<" is "<<(fileEventsHandledCount > fileEvents/2)<<" requested is "<<requested<<std::endl;
-	  fileEventsHandledCount = 0;
-	  requested = true;
-	  if (DEBUG)
-	    (*out)<<"sending signal "<<std::endl;
-	  requestMoreFileEvents->sendSignal();
-	  if (DEBUG)
-	    (*out)<<"signal sent "<<std::endl;
-	}
-
-        /* If the last time we checked the time in the events queue it was empty, redo our check now. */
-	// Check epoll events.
-        int timeout = 1;
+	  (*out)<< "Heap Event handler GOT JOB " << EventNames[dispatchJob.type] <<" server "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" now "<<now<<" value "<<dispatchJob.value<<" events handled "<<fileEventsHandledCount<<" state "<<(*connStats)[dispatchJob.conn_id].state<<std::endl;
 	
+	dispatch(dispatchJob, now);
+	nextHeapEventTime = eventsToHandle->nextEventTime();
+	//(*out)<< "EVENT HANDLER: Pulled " << fileEventsHandledCount << " events. Next event time is " << nextEventTime << std::endl;
+      }
+      else {
 	if (DEBUG)
-	  (*out)<<"Checking poll handler with timeout "<<timeout<<std::endl;
-	
-        myPollHandler->waitForEvents(timeout);
-        
-        /* Handle any events from poll. Could be 			*/
-        /*    - a notification from send or recv threads.		*/
-        /*    - a new connection to our server socket.			*/
-        struct epoll_event *poll_e = (struct epoll_event*) calloc(1, sizeof(struct epoll_event));
-        while(myPollHandler->nextEvent(poll_e)) {
-            // XXX Handle notifications.
-	  /* Figure out what we want to do with this event */
-	  eventsHandled++;
-	  int fd = poll_e->data.fd;
-	  long int conn_id = sockfdToConnIDMap[fd];
-	  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	  (*out)<< "We think we have a job, but failed to pull it? " << std::endl;
+      }
+    }
+    
+    // Should account for eventsHandled here too
+    processAcceptEvents(now);
+    now = msSinceStart(startTime);
+    
+    // Check if we should ask for more events
+    // if we handled 1/10th of what is max for our thread
+    
+    //(*out)<<"Handled "<<fileEventsHandledCount<<" max "<<maxQueuedFileEvents<<" last event "<<lastEventCountWhenRequestingForMore<<" fehc "<<fileEventsHandledCount<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
+    //if((fileEventsHandledCount > (maxQueuedFileEvents/10) || incomingFileEvents->getLength() < maxQueuedFileEvents/2) && requested == false) this works
+
+    if (DEBUG)
+      (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<" eventstohandle "<<eventsToHandle->getLength()<<std::endl;
+    if((fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents)
+      {
+	lastEventCountWhenRequestingForMore += fileEventsHandledCount;
+	if (DEBUG)
+	  (*out)<<"requesting more events, last "<<lastEventCountWhenRequestingForMore<<" file events "<<fileEvents<<" handled "<<fileEventsHandledCount<<" comparisong between "<<fileEventsHandledCount<<" and "<<fileEvents/2<<" is "<<(fileEventsHandledCount > fileEvents/2)<<" requested is "<<requested<<std::endl;
+	fileEventsHandledCount = 0;
+	requested = true;
+	if (DEBUG)
+	  (*out)<<"sending signal "<<std::endl;
+	requestMoreFileEvents->sendSignal();
+	if (DEBUG)
+	  (*out)<<"signal sent "<<std::endl;
+      }
+    
+    /* If the last time we checked the time in the events queue it was empty, redo our check now. */
+    // Check epoll events.
+    int timeout = 1;
+    
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    int numevents = myPollHandler->waitForEvents(timeout);
+    
+    if (DEBUG)
+      (*out)<<ms<<" checking poll handler with timeout "<<timeout<<" got "<<numevents<<" size of read set "<<myPollHandler->rssize()<<" is 62 set? "<<myPollHandler->checkForRead(62)<<std::endl;
+    
+    /* Handle any events from poll. Could be 			*/
+    /*    - a notification from send or recv threads.		*/
+    /*    - a new connection to our server socket.			*/
+    struct epoll_event *poll_e = (struct epoll_event*) calloc(1, sizeof(struct epoll_event));
+    while(myPollHandler->nextEvent(poll_e)) {
+      // XXX Handle notifications.
+      /* Figure out what we want to do with this event */
+      eventsHandled++;
+      int fd = poll_e->data.fd;
+      long int conn_id = sockfdToConnIDMap[fd];
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      if (DEBUG)
+	(*out)<<ms<<" Got event on sock "<<fd<<" w flags "<<poll_e->events<<" epoll in "<<EPOLLIN<<" out "<<EPOLLOUT<<" on conn "<<conn_id<<" sock 62 in read? "<<myPollHandler->checkForRead(62)<<std::endl;
+      if (conn_id == -1 && ((poll_e->events & EPOLLIN) > 0))
+	{
 	  if (DEBUG)
-	    (*out)<<ms<<" Got event on sock "<<fd<<" w flags "<<poll_e->events<<" epoll in "<<EPOLLIN<<" out "<<EPOLLOUT<<" on conn "<<conn_id<<std::endl;
-	  if (conn_id == -1 && ((poll_e->events & EPOLLIN) > 0))
+	    (*out)<<"EH got ACCEPT event and should accept connection\n";
+	  /* New connection to one of our servers. */
+	  /* it could be more than one ACCEPT */
+	  while(true)
 	    {
-	      if (DEBUG)
-	      (*out)<<"EH got ACCEPT event and should accept connection\n";
-	      /* New connection to one of our servers. */
-	      /* it could be more than one ACCEPT */
-	      while(true)
-		{
-		  conn_id = acceptNewConnection(poll_e, now);
-		  if (conn_id == -1)
-		    {
-		      if (DEBUG)
-			(*out)<<"Nothing more to accept\n";
-		      break;
-		    }
-		  else if (conn_id >= 0)
-		    {
-		      myConns[conn_id].state = EST;
-		      (*connStats)[conn_id].state = EST;
-		      (*connStats)[conn_id].last_completed++;
-		      (*connStats)[conn_id].started = now;
-		      (*connStats)[conn_id].thread = myID;
-		      if (DEBUG)
-			(*out)<<"Accepted conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
-		      getNewEvents(conn_id);
-		    }
-		};
-	      continue;
-	    }
-	  if (myConns[conn_id].state == CONNECTING) // && (poll_e->events & EPOLLOUT > 0))
-	    {
-	      // Check if we errored out
-	      if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
-		{
-		  // Give up on this conn somehow, Jelena
-		  continue;
-		}
-	      // Check for error if (getsockopt (socketFD, SOL_SOCKET, SO_ERROR, &retVal, &retValLen) < 0)
-	      // ERROR, fail somehow, close socket
-	      //if (retVal != 0) 
-	      // ERROR: connect did not "go through"
-	      newConnectionUpdate(fd, conn_id, 0, now);
-	      myConns[conn_id].state = EST;
-	      (*connStats)[conn_id].state = EST;
-	      (*connStats)[conn_id].last_completed++;
-	      (*connStats)[conn_id].started = now;
-	      if (DEBUG)
-		(*out)<<"Connected successfully, conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed 4 "<<(*connStats)[conn_id].last_completed<<std::endl;
-	      getNewEvents(conn_id);
-	      continue;
-	   }
-	  if (myConns[conn_id].state == EST && ((poll_e->events & EPOLLOUT) > 0))
-	    {
-	      if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
-		{
-		  // Give up on this conn somehow, Jelena
-		  continue;
-		}
-	      int len = myConns[conn_id].waitingToSend;
-	      if (DEBUG)
-	      (*out)<<"EH possibly got SEND event for conn "<<conn_id<<" flags "<<poll_e->events<<" epollout "<<EPOLLOUT<<" comparison "<<((poll_e->events & EPOLLOUT) > 0)<<" should send "<<len<<std::endl;
-	      /* New connection to one of our servers. */
-	      if (len > 0)
+	      conn_id = acceptNewConnection(poll_e, now);
+	      if (conn_id == -1)
 		{
 		  if (DEBUG)
-		  (*out)<<"Waiting to send "<<myConns[conn_id].waitingToSend<<" on socket "<<fd<<std::endl;
-		  try
-		    {
-		      int n = send(fd, buf, len, 0);
-		      if (n > 0)
-			{
-			  if (DEBUG)
-			    (*out)<<"Successfully handled SEND for conn "<<conn_id<<" for "<<n<<" bytes\n";
-			  myConns[conn_id].waitingToSend -= n;
-			  if (myConns[conn_id].waitingToSend > 0)
-			    {
-			      if (DEBUG)
-				(*out)<<"Still have to send "<<myConns[conn_id].waitingToSend<<" bytes\n";
-			      myPollHandler->watchForWrite(fd);
-			    }
-			  else
-			    {
-			      connectionUpdate(conn_id, 0, now);
-			      (*connStats)[conn_id].last_completed++; // here we could remember the event id instead of count
-			      if (DEBUG)
-				(*out)<<"For conn "<<conn_id<<" last completed 5 "<<(*connStats)[conn_id].last_completed<<std::endl;
-			      getNewEvents(conn_id);
-			    }
-			}
-		    }
-		  catch(int e)
-		    {
-		      std::cerr<<"Errored out while sending for "<<conn_id<<std::endl;
-		    }
+		    (*out)<<"Nothing more to accept\n";
+		  break;
 		}
-	    }
-	  if (myConns[conn_id].state == EST && ((poll_e->events & EPOLLIN) > 0))
-	    {
-	      if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
+	      else if (conn_id >= 0)
 		{
-		  // Give up on this conn somehow, Jelena, try to receive because EPOLLIN was set
-		  continue;
+		  myConns[conn_id].state = EST;
+		  (*connStats)[conn_id].state = EST;
+		  (*connStats)[conn_id].last_completed++;
+		  (*connStats)[conn_id].started = now;
+		  (*connStats)[conn_id].thread = myID;
+		  if (DEBUG)
+		    (*out)<<"Accepted conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
+		  getNewEvents(conn_id);
 		}
+	    };
+	  continue;
+	}
+      if (myConns[conn_id].state == CONNECTING) // && (poll_e->events & EPOLLOUT > 0))
+	{
+	  // Check if we errored out
+	  if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
+	    {
+	      // Give up on this conn somehow, Jelena
+	      continue;
+	    }
+	  // Check for error if (getsockopt (socketFD, SOL_SOCKET, SO_ERROR, &retVal, &retValLen) < 0)
+	  // ERROR, fail somehow, close socket
+	  //if (retVal != 0) 
+	  // ERROR: connect did not "go through"
+	  newConnectionUpdate(fd, conn_id, 0, now);
+	  myConns[conn_id].state = EST;
+	  (*connStats)[conn_id].state = EST;
+	  (*connStats)[conn_id].last_completed++;
+	  (*connStats)[conn_id].started = now;
+	  if (DEBUG)
+	    (*out)<<"Connected successfully, conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed 4 "<<(*connStats)[conn_id].last_completed<<std::endl;
+	  getNewEvents(conn_id);
+	  continue;
+	}
+      if (myConns[conn_id].state == EST && ((poll_e->events & EPOLLOUT) > 0))
+	{
+	  if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
+	    {
+	      // Give up on this conn somehow, Jelena
+	      continue;
+	    }
+	  int len = myConns[conn_id].waitingToSend;
+	  if (DEBUG)
+	    (*out)<<"EH possibly got SEND event for conn "<<conn_id<<" flags "<<poll_e->events<<" epollout "<<EPOLLOUT<<" comparison "<<((poll_e->events & EPOLLOUT) > 0)<<" should send "<<len<<std::endl;
+	  /* New connection to one of our servers. */
+	  if (len > 0)
+	    {
 	      if (DEBUG)
-		(*out)<<"Possibly handling a RECV event for conn "<<conn_id<<" on sock "<<fd<<std::endl;
+		(*out)<<"Waiting to send "<<myConns[conn_id].waitingToSend<<" on socket "<<fd<<std::endl;
 	      try
 		{
-		   int n = recv(fd, buf, MAXLEN, 0);
-		   int total = 0;
-		   while (n == MAXLEN)
-		     {
-		       total += n;
-		       n = recv(fd, buf, MAXLEN, 0);
-		     }
-		   total += n;
-
-		   if (DEBUG)
-		     (*out)<<"RECVd 2 "<<total<<" bytes for conn "<<conn_id<<std::endl;
-
-		  if (total > 0)		
+		  int n = send(fd, buf, len, 0);
+		  if (n > 0)
 		    {
-		      long int waited = myConns[conn_id].waitingToRecv;
-		      myConns[conn_id].waitingToRecv -= total;
-
 		      if (DEBUG)
-			(*out)<<"RECV waiting now for "<<myConns[conn_id].waitingToRecv<<" on conn "<<conn_id<<std::endl;
-
-		      if (myConns[conn_id].waitingToRecv == 0 ||
-			  (myConns[conn_id].waitingToRecv < 0 && waited > 0))
-			{		     
-			  connectionUpdate(conn_id, 0, now);
-			  (*connStats)[conn_id].last_completed++; // here we could remember the event id instead of count Jelena check
+			(*out)<<"Successfully handled SEND for conn "<<conn_id<<" for "<<n<<" bytes\n";
+		      myConns[conn_id].waitingToSend -= n;
+		      if (myConns[conn_id].waitingToSend > 0)
+			{
 			  if (DEBUG)
-			    (*out)<<"For conn "<<conn_id<<" last completed 6 "<<(*connStats)[conn_id].last_completed<<std::endl;
+			    (*out)<<"Still have to send "<<myConns[conn_id].waitingToSend<<" bytes\n";
+			  myPollHandler->watchForWrite(fd);
+			}
+		      else
+			{
+			  connectionUpdate(conn_id, 0, now);
+			  (*connStats)[conn_id].last_completed++; // here we could remember the event id instead of count
+			  if (DEBUG)
+			    (*out)<<"For conn "<<conn_id<<" last completed 5 "<<(*connStats)[conn_id].last_completed<<std::endl;
 			  getNewEvents(conn_id);
 			}
 		    }
 		}
 	      catch(int e)
 		{
-		  std::cerr<<"Errored out while receiving for "<<conn_id<<std::endl;
+		  std::cerr<<"Errored out while sending for "<<conn_id<<std::endl;
 		}
 	    }
-        }
-        free(poll_e);
-	if (DEBUG)
-	  (*out)<<"Checking stalled conns "<<std::endl;
-	checkStalledConns(now);
-	checkOrphanConns(now);
+	}
+      if (myConns[conn_id].state == EST && ((poll_e->events & EPOLLIN) > 0))
+	{
+	  if ((poll_e->events & EPOLLHUP) || (poll_e->events & EPOLLERR))
+	    {
+	      // Give up on this conn somehow, Jelena, try to receive because EPOLLIN was set
+	      continue;
+	    }
+	  if (DEBUG)
+	    (*out)<<"Possibly handling a RECV event for conn "<<conn_id<<" on sock "<<fd<<std::endl;
+	  try
+	    {
+	      int n = recv(fd, buf, MAXLEN, 0);
+	      int total = 0;
+	      while (n == MAXLEN)
+		{
+		  total += n;
+		  n = recv(fd, buf, MAXLEN, 0);
+		}
+	      total += n;
 
-	if (eventsHandled == 0)
+	      if (DEBUG)
+		(*out)<<"RECVd 2 "<<total<<" bytes for conn "<<conn_id<<std::endl;
+	      
+	      if (total > 0)		
+		{
+		  long int waited = myConns[conn_id].waitingToRecv;
+		  myConns[conn_id].waitingToRecv -= total;
+		  
+		  if (DEBUG)
+		    (*out)<<"RECV waiting now for "<<myConns[conn_id].waitingToRecv<<" on conn "<<conn_id<<std::endl;
+		  
+		  if (myConns[conn_id].waitingToRecv == 0 ||
+		      (myConns[conn_id].waitingToRecv < 0 && waited > 0))
+		    {		     
+		      connectionUpdate(conn_id, 0, now);
+		      (*connStats)[conn_id].last_completed++; // here we could remember the event id instead of count Jelena check
+		      if (DEBUG)
+			(*out)<<"For conn "<<conn_id<<" last completed 6 "<<(*connStats)[conn_id].last_completed<<std::endl;
+		      getNewEvents(conn_id);
+		    }
+		}
+	    }
+	  catch(int e)
+	    {
+	      std::cerr<<"Errored out while receiving for "<<conn_id<<std::endl;
+	    }
+	}
+    }
+    free(poll_e);
+    if (DEBUG)
+      (*out)<<"Checking stalled conns "<<std::endl;
+    checkStalledConns(now);
+    checkOrphanConns(now);
+
+    /*
+    if (eventsHandled == 0)
+      {
+	idle++;
+	if (idle > ITHRESH)
 	  {
-	    idle++;
-	    if (idle > ITHRESH)
-	      {
-		usleep(ITHRESH*1000);
-	      }
+	    usleep(ITHRESH*1000);
 	  }
-	else
-	  idle = 0;
-	if (DEBUG)
-	  (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<< std::endl;
-	eventsHandled = 0;
+      }
+    else
+      idle = 0;
+    */
+    if (DEBUG)
+      (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<< std::endl;
+    eventsHandled = 0;
   }
   for (auto it = myConns.begin(); it != myConns.end(); it++)
     (*out)<<"My conns "<<myConns.size()<<" conn "<<it->first<<" state "<<it->second.state<<std::endl;
-
+  
 }
 
 void EventHandler::getNewEvents(long int conn_id)

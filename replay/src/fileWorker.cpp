@@ -10,7 +10,7 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     useMMap = useMMapFlag;
     my_conn_id = 0;
     my_time = 10000;
-    my_sport = 50000;
+    my_sport = 10000;
     my_cport = 10000;
     
     connTime = c2time;
@@ -28,7 +28,8 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     loadEventsPollHandler = new PollHandler(DEBUG);
     loadEventsPollHandler->watchForRead(loadMoreNotifier->myFD());
     
-    /* Get a shortterm heap so we can internally reorder connection start/stop events with events from event files. */
+    /* Get a shortterm heap so we can internally reorder connection start/stop events 
+       with events from event files. */
     shortTermHeap = new EventHeap();
     
     /* Queue of events for the EventHandler. */
@@ -130,6 +131,17 @@ std::vector <std::vector <std::string>> FileWorker::loadFile(std::istream* infil
     return(data);
 }
 
+void FileWorker::getFields(std::string bufPart, std::vector <std::string>* record, int numFields)
+{
+  std::istringstream ss(bufPart);
+  
+  while(ss) {
+    std::string s;
+    if(!std::getline(ss, s, ',')) break;
+    record->push_back(trim(s));
+  }
+}
+
 std::vector <std::vector <std::string>> FileWorker::loadMMapFile(void * mmapData, int numFields, int numRecords) {
     std::vector <std::vector <std::string>> data;
     
@@ -144,24 +156,16 @@ std::vector <std::vector <std::string>> FileWorker::loadMMapFile(void * mmapData
         std::vector <std::string> record;
         std::string bufPart;
         bufPart.assign(begin,end);
-        std::istringstream ss(bufPart);
-        
-        while(ss) {
-            std::string s;
-            if(!std::getline(ss, s, ',')) break;
-            record.push_back(trim(s));
-        }
-        
-        if(record.size() == numFields) {
-            data.push_back(record);
-        }
-        else {
-	  std::cerr << "ERROR: Not enough fields in line to process: " <<record.size()  << std::endl;
-        }
+
+	getFields(bufPart, &record, numFields);
+	if(record.size() == numFields) {
+	  data.push_back(record);
+	}
+	else {
+	  std::cerr << "ERROR: Not enough fields in line to process: " <<bufPart<<" size "<<record.size()<<" numfields "<<numFields<< std::endl;
+	}
+
         i = i + 1;
-        //if(i >= numRecords && !noLimit) break;
-	//if (!noLimit)
-	//break;
 
         if(end != buff_end) {
             begin = end+1;
@@ -214,9 +218,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
       {
 	if (DEBUG)
 	  (*out)<<"Making up events\n";
-	int numconns = 100;
-	int numevents = 200;
-	int numbytes = 1000;
 
 	/*
 	for(auto it = myIPs.begin(); it != myIPs.end(); it++)
@@ -233,13 +234,16 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	
 	std::string server, client;
 	int sport, cport;
-	while(true)
+	long int my_eid = 0;
+	std::string inputString="";
+	double time;
+	int numFields = 8;
+
+	std::vector <std::string> record;
+        	
+	for(int i=0; i<numconns.load(); i++)
 	  {
-	    for(int i=0; i<numconns; i++)
-	      {
-		EventType type = NONE;
-		std::string serverString, connString;
-		if (i < numconns/2)
+	    if (i < numconns.load()/2)
 		  {
 		    if (isServer)
 		      {
@@ -252,114 +256,140 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 			server = myIP;
 		      }
 		  }
+	    else
+	      {
+		if (!isServer)
+		  {
+		    server = peerIP;
+		    client = myIP;
+		  }
 		else
 		  {
-		    if (!isServer)
-		      {
-			server = peerIP;
-			client = myIP;
-		      }
-		    else
-		      {
-			client = peerIP;
-			server = myIP;
-		      }
+		    client = peerIP;
+		    server = myIP;
 		  }
-		// Create initial connection
-		if (server == peerIP)
-		  type = CONNECT;
-		else
-		  type = SRV_START;
-
-		// Connect		
-		serverString = server + ":" + std::to_string(my_sport+i);
-		connString = client + ":" + std::to_string(my_cport+i)+","+serverString;
-		long int time = my_time;
-		if (type == SRV_START)
-		  time -= SRV_UPSTART;
-		Event e(serverString, connString, -1, time, 0, type, my_conn_id+i, -1, 0);
-		if (DEBUG)
-		  (*out)<<"Conn "<<my_conn_id+i<<" event of type "<<EventNames[type]<<" connstring "<<connString<<" servstring "<<serverString<<" time "<<time<<std::endl;
-		shortTermHeap->addEvent(e);
-		lastEventTime = my_time;
-		
-		myConnIDs.insert(my_conn_id+i);
-	      
-		/* Fill out connIDToConnectionPairMap */
-		connectionPair cp = connectionPair(client, my_cport+i, server, my_sport+i);
-		connIDToConnectionPairMap[my_conn_id+i] = std::make_shared<connectionPair>(cp);
-		
-		long int eid = 0;
-		for (int j=0; j<numevents;j++)
-		  {
-		    if (server == peerIP)
-		      {
-			Event e1(serverString, connString, -1, time+j, 0, SEND, my_conn_id+i, eid+4*j, numbytes);
-			shortTermHeap->addEvent(e1);
-			if (DEBUG)
-			  (*out)<<"Conn "<<my_conn_id+i<<" event of type SEND connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j<<" eid "<<eid+4+j<<std::endl;
-			Event e2(serverString, connString, -1, time+j+2, 0, RECV, my_conn_id+i, eid+4*j+2, numbytes);
-			shortTermHeap->addEvent(e2);
-			if (DEBUG)
-			  (*out)<<"Conn "<<my_conn_id+i<<" event of type RECV connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+2<<" eid "<<eid+4*j+2<<std::endl;
-		      }
-		    else
-		      {
-			Event e1(serverString, connString, -1, time+j+1, 0, RECV, my_conn_id+i, eid+4*j+1, numbytes);
-			shortTermHeap->addEvent(e1);
-			if (DEBUG)
-			  (*out)<<"Conn "<<my_conn_id+i<<" event of type RECV connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+1<<" eid "<<eid+4*j+1<<std::endl;
-			Event e2(serverString, connString, -1, time+j+3, 0, SEND, my_conn_id+i, eid+4*j+3, numbytes);
-			shortTermHeap->addEvent(e2);
-			if (DEBUG)
-			  (*out)<<"Conn "<<my_conn_id+i<<" event of type SEND connstring "<<connString<<" servstring "<<serverString<<" time "<<time+j+3<<" eid "<<eid+4+j+3<<std::endl;
-		      }
-		    time += 4;
-		  }
-		Event ec(serverString, connString, -1, time, 0, CLOSE, my_conn_id+i, eid+numevents*4, 0);
-		shortTermHeap->addEvent(ec);
-		if (DEBUG)
-		  (*out)<<"Conn "<<my_conn_id+i<<" event of type CLOSE connstring "<<connString<<" servstring "<<serverString<<" time "<<my_time<<" eid "<<eid<<std::endl;
 	      }
-	    eventsProduced += numconns*numevents;
-	    my_time += 1000;
-	    my_conn_id += numconns;
-	    my_sport += numconns;
-	    my_cport += numconns;
-	    return;
+	    // Create initial connection
+
+	    time = my_time - SRV_UPSTART;
+	    
+	    if (time > lastEventTime)
+	      lastEventTime = time;
+	    
+	    	    
+	    time /= 1000;
+	    inputString = "CONN,"+std::to_string(my_conn_id+i)+","+client+","+std::to_string(my_cport++)+",->,"+server+","+std::to_string(my_sport++)+","+std::to_string(time);
+	    if (DEBUG)
+	      (*out)<<inputString<<std::endl;
+	    record.clear();
+	    getFields(inputString, &record, numFields);
+	    eventData.push_back(record);
 	  }
+	time = my_time;
+	double delta = 1000/numevents.load()/4.0;
+	double runningtime = time;
+	
+	for (int j=0; j<numevents.load();j++)
+	  {
+	    double dtime;
+	    long int eid;
+	    for(int i=0; i<numconns.load(); i++)
+	      {
+		eid = my_eid;
+		dtime = runningtime;
+		dtime += delta;
+		time = dtime/1000;
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		if (DEBUG)
+		  (*out)<<inputString<<std::endl;
+		record.clear();
+		getFields(inputString, &record, numFields);
+		std::cout<<"Event "<<j<<" conn "<<i<<" record size "<<record.size()<<" ev data size "<<eventData.size()<<std::endl;
+		eventData.push_back(record);
+		dtime += delta;
+		time = dtime/1000;
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		if (DEBUG)
+		  (*out)<<inputString<<std::endl;
+		record.clear();
+		getFields(inputString, &record, numFields);
+		eventData.push_back(record);
+		dtime += delta;
+		time = dtime/1000;
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		record.clear();
+		getFields(inputString, &record, numFields);
+		if (DEBUG)
+		  (*out)<<inputString<<std::endl;
+		eventData.push_back(record);
+		dtime += delta;
+		time = dtime/1000;
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		if (DEBUG)
+		  (*out)<<inputString<<std::endl;
+		record.clear();
+		getFields(inputString, &record, numFields);
+		eventData.push_back(record);
+	      }
+	    my_eid = eid;
+	    runningtime = dtime;
+	  }
+	double dtime;
+	long int eid;
+	for(int i=0; i<numconns.load(); i++)
+	  {
+	    eid = my_eid;
+	    dtime = runningtime;
+	    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+	    if (DEBUG)
+	      (*out)<<inputString<<std::endl;
+	    record.clear();
+	    getFields(inputString, &record, numFields);
+	    eventData.push_back(record);
+	    dtime += delta;
+	    time = dtime/1000;
+	    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+	    if (DEBUG)
+	      (*out)<<inputString<<std::endl;
+	    record.clear();
+	    getFields(inputString, &record, numFields);
+	    eventData.push_back(record);
+	  }
+	my_conn_id += numconns.load();
       }
     // We're starting a new file
     if (lastLine == 0)
       {
-	if(useMMap) {
-	  if (DEBUG)
-	    (*out) << "Using MMAP" << std::endl;
-	  eventData = loadMMapFile(*mmappedFilesItr, 8, eventsToGet);
-	}
-	else {
-	  eventData = loadFile(*eventIFStreamsItr, 8, eventsToGet);
-	}
-	
-	/* We've probably reached the end of the file. */
-	eventIFStreamsItr++;
-	mmappedFilesItr++;
-
-	if(eventIFStreamsItr >= eventsIFStreams.end() || mmappedFilesItr >= mmapedFiles.end()) {
-	  isDone = true;
-	  if (false) // Jelena, relooping
-	    {
-	      for(eventIFStreamsItr = eventsIFStreams.begin(); eventIFStreamsItr != eventsIFStreams.end(); ++eventIFStreamsItr) {
-		(*eventIFStreamsItr)->clear();
-		(*eventIFStreamsItr)->seekg(0, std::ios::beg);
-	      }
-	      eventIFStreamsItr = eventsIFStreams.begin();
-	      mmappedFilesItr = mmapedFiles.begin();
-	      if(loopedCount == 0) {
-		/* This is the first time we've looped, record the duration. */
-		loopDuration = lastEventTime;
-	      }
-	      loopedCount = loopedCount + 1;
+	if (!makeup.load())
+	  {
+	    if(useMMap) {
+	      if (DEBUG)
+		(*out) << "Using MMAP" << std::endl;
+	      eventData = loadMMapFile(*mmappedFilesItr, 8, eventsToGet);
+	    }
+	    else {
+	      eventData = loadFile(*eventIFStreamsItr, 8, eventsToGet);
+	    }
+	    /* We've probably reached the end of the file. */
+	    eventIFStreamsItr++;
+	    mmappedFilesItr++;
+	    
+	    if(eventIFStreamsItr >= eventsIFStreams.end() || mmappedFilesItr >= mmapedFiles.end()) {
+	      isDone = true;
+	      if (false) // Jelena, relooping
+		{
+		  for(eventIFStreamsItr = eventsIFStreams.begin(); eventIFStreamsItr != eventsIFStreams.end(); ++eventIFStreamsItr) {
+		    (*eventIFStreamsItr)->clear();
+		    (*eventIFStreamsItr)->seekg(0, std::ios::beg);
+		  }
+		  eventIFStreamsItr = eventsIFStreams.begin();
+		  mmappedFilesItr = mmapedFiles.begin();
+		  if(loopedCount == 0) {
+		    /* This is the first time we've looped, record the duration. */
+		    loopDuration = lastEventTime;
+		  }
+		  loopedCount = loopedCount + 1;
+		}
 	    }
 	}
       }
@@ -721,7 +751,8 @@ void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) 
         }
 	for(int i=0; i<numThreads.load();i++)
 	  {
-	    (*out)<<"Thread "<<i<<" conns "<<threadToConnCount[i]<<" events "<<threadToEventCount[i]<<std::endl;
+	    if (DEBUG)
+	      (*out)<<"Thread "<<i<<" conns "<<threadToConnCount[i]<<" events "<<threadToEventCount[i]<<std::endl;
 	  }
 
 	if (isInitd.load() == false)

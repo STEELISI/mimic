@@ -13,11 +13,23 @@ PollHandler::~PollHandler() {
 }
 
 void PollHandler::watchForRead(int fd) {
-  //if (DEBUG)
-  //std::cout<<"PH: watching for read on "<<fd<<std::endl;
+  if (DEBUG)
+    std::cout<<"PH: watching for read on "<<fd<<std::endl;
   watch(fd, READ);
   fdsToWatchForRead.insert(fd);
 }
+
+int PollHandler::rssize()
+{
+  return fdsToWatchForRead.size();
+}
+
+
+bool PollHandler::checkForRead(int fd)
+{
+  return (fdsToWatchForRead.find(fd) != fdsToWatchForRead.end()) ;
+}
+
 
 void PollHandler::watchForWrite(int fd) {
   /* Should ONLY be called if we have attempted to write the socket, 	*/
@@ -33,13 +45,13 @@ void PollHandler::watch(int fd, epollWatchType type) {
   
   /* Are we looking for incoming data? Or the ability to write to an EAGAIN fd? */
   if(type == READ)
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN |  EPOLLET;
   else if(type == WRITE)
     /* If we're watching for a write, don't rearm the fd after an event. */
-    //event.events = EPOLLOUT | EPOLLONESHOT | EPOLLET;
-    event.events = EPOLLOUT | EPOLLET;  
-  //if (DEBUG)
-  //std::cout<<"Added watch for "<<fd<<" for event type "<<type<<std::endl;
+    event.events = EPOLLOUT | EPOLLONESHOT | EPOLLET;
+  //event.events = EPOLLOUT | EPOLLET;  
+  if (DEBUG)
+    std::cout<<"Added watch for "<<fd<<" for event type "<<type<<std::endl;
   if(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event) == -1) {
   
     /* We might have failed because we're already watching this fd. */
@@ -62,12 +74,12 @@ void PollHandler::stopWatching(int fd) {
 }
 
 
-void PollHandler::waitForEvents(int timeout) {
+int PollHandler::waitForEvents(int timeout) {
   /* Wait for events, or timeout. 				*/
   /* Timeout is by default -1, so we'll wait for an event. 	*/
   eventIndex = 0;
   currentEventCount = epoll_wait(epollfd, events, MAX_EPOLL_EVENTS, timeout);
-  return;
+  return currentEventCount;
 }       
 
 bool PollHandler::nextEvent(struct epoll_event *e) {

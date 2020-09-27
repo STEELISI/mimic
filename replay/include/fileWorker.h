@@ -51,6 +51,9 @@ class FileWorker {
         bool isMyConnID(long int connID);
         void loadEvents(int howmany, int rounds);
 	int findMin();
+
+	void getFields(std::string bufPart, std::vector <std::string>* record, int numFields);
+
 	int rounds = 0;
 	bool isDone = false;
 	bool isProcessed = false;

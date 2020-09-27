@@ -36,6 +36,9 @@ bool returnLoadMoreFileEvents();
 extern std::atomic<bool> isRunning;
 extern std::atomic<bool> isInitd;
 extern std::atomic<int> numThreads;
+extern std::atomic<int> numconns;
+extern std::atomic<int> numbytes;
+extern std::atomic<int> numevents;
 extern std::atomic<bool> isServer;
 extern std::atomic<bool> makeup;
 

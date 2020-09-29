@@ -44,6 +44,8 @@ class EventHandler {
         /* 	  out: connid (value) map: none, add value		*/
 
         int myID;
+	long int my_bytes;
+	long int my_events;
         long int fileEventsHandledCount;       
         long int lastEventCountWhenRequestingForMore;
 
@@ -99,5 +101,6 @@ class EventHandler {
         bool startup();
         void loop(std::chrono::high_resolution_clock::time_point startTime);
 };
+	
 
 #endif

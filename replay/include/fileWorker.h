@@ -39,6 +39,7 @@ class FileWorker {
 	long int my_time;
 	unsigned short int my_sport;
 	unsigned short int my_cport;
+	unsigned long int startTime;
 	/* For logging */
 	std::ofstream* out;
 	
@@ -113,6 +114,8 @@ class FileWorker {
         ~FileWorker();
         bool startup();
         void loop(std::chrono::high_resolution_clock::time_point startTime);
+	void setStartTime(unsigned long int sTime);
+		
         ConnectionPairMap connIDToConnectionPairMap; 
         ConnectionPairMap * getConnectionPairMap();
 };

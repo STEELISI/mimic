@@ -11,7 +11,8 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     my_conn_id = 0;
     my_time = 10000;
     my_sport = 10000;
-    my_cport = 10000;
+    my_cport = 20000;
+    startTime = 0;
     
     connTime = c2time;
     listenerTime = l2time;
@@ -198,12 +199,14 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
   if (DEBUG)
     (*out) <<rounds<<" Loading events, last line " <<lastLine<<" max "<<eventData.size()<<std::endl;
 
-    for(int i=0; i<numThreads.load();i++)
-      {
-	threadToConnCount[i] = 0;
-	threadToEventCount[i] = 0;
-      }
-
+  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  
+  for(int i=0; i<numThreads.load();i++)
+    {
+      threadToConnCount[i] = 0;
+      threadToEventCount[i] = 0;
+    }
+  
     int currentThread = 0;
 
     int eventsProduced = 0;
@@ -214,36 +217,39 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	return;
       }
     // Should we make up traffic or read from file?
-    if (makeup.load())
+    if (lastLine == 0)
       {
-	if (DEBUG)
-	  (*out)<<"Making up events\n";
-
-	/*
-	for(auto it = myIPs.begin(); it != myIPs.end(); it++)
-	  (*out)<<"My IP "<<*it<<std::endl;
-	for(auto it = foreignIPs.begin(); it != foreignIPs.end(); it++)
-	  (*out)<<"Foreign IP "<<*it<<std::endl;
-	*/
-	auto it = myIPs.begin();
-	std::string myIP = *it;
-	it = foreignIPs.begin();
-	std::string peerIP = *it;
-	if (DEBUG)
-	  (*out)<<"Makeup traffic between "<<myIP<<" and "<<peerIP<<std::endl;
-	
-	std::string server, client;
-	int sport, cport;
-	long int my_eid = 0;
-	std::string inputString="";
-	double time;
-	int numFields = 8;
-
-	std::vector <std::string> record;
-        	
-	for(int i=0; i<numconns.load(); i++)
+	if (makeup.load())
 	  {
-	    if (i < numconns.load()/2)
+	    if (DEBUG)
+	      (*out)<<"Making up events\n";
+	    
+	    if (startTime > 0)
+	      if (now - startTime + 10000 > my_time)
+		my_time = now - startTime + 10000;
+	    
+	    if (DEBUG)
+	      (*out)<<"Start time is "<<startTime<<" now "<<now<<" my time "<<my_time<<std::endl;
+	    
+	    auto it = myIPs.begin();
+	    std::string myIP = *it;
+	    it = foreignIPs.begin();
+	    std::string peerIP = *it;
+	    if (DEBUG)
+	      (*out)<<"Makeup traffic between "<<myIP<<" and "<<peerIP<<std::endl;
+	    
+	    std::string server, client;
+	    int sport, cport;
+	    long int my_eid = 0;
+	    std::string inputString="";
+	    double time;
+	    int numFields = 8;
+	    
+	    std::vector <std::string> record;
+	    
+	    for(int i=0; i<numconns.load(); i++)
+	      {
+		if (i < numconns.load()/2)
 		  {
 		    if (isServer)
 		      {
@@ -256,59 +262,90 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 			server = myIP;
 		      }
 		  }
-	    else
-	      {
-		if (!isServer)
-		  {
-		    server = peerIP;
-		    client = myIP;
-		  }
 		else
 		  {
-		    client = peerIP;
-		    server = myIP;
+		    if (!isServer)
+		      {
+			server = peerIP;
+			client = myIP;
+		      }
+		    else
+		      {
+			client = peerIP;
+			server = myIP;
+		      }
 		  }
+		// Create initial connection
+		
+		time = my_time - SRV_UPSTART;
+		
+		if (time > lastEventTime)
+		  lastEventTime = time;
+		
+	    	
+		time /= 1000;
+		inputString = "CONN,"+std::to_string(my_conn_id+i)+","+client+","+std::to_string((my_cport++) % 65536 + 1)+",->,"+server+","+std::to_string(my_sport+i)+","+std::to_string(time);
+		if (DEBUG)
+		  (*out)<<inputString<<std::endl;
+		record.clear();
+		getFields(inputString, &record, numFields);
+		eventData.push_back(record);
 	      }
-	    // Create initial connection
-
-	    time = my_time - SRV_UPSTART;
+	    time = my_time;
+	    double delta = 1000/numevents.load()/4.0;
+	    double runningtime = time;
 	    
-	    if (time > lastEventTime)
-	      lastEventTime = time;
-	    
-	    	    
-	    time /= 1000;
-	    inputString = "CONN,"+std::to_string(my_conn_id+i)+","+client+","+std::to_string(my_cport++)+",->,"+server+","+std::to_string(my_sport++)+","+std::to_string(time);
-	    if (DEBUG)
-	      (*out)<<inputString<<std::endl;
-	    record.clear();
-	    getFields(inputString, &record, numFields);
-	    eventData.push_back(record);
-	  }
-	time = my_time;
-	double delta = 1000/numevents.load()/4.0;
-	double runningtime = time;
-	
-	for (int j=0; j<numevents.load();j++)
-	  {
+	    for (int j=0; j<numevents.load();j++)
+	      {
+		double dtime;
+		long int eid;
+		for(int i=0; i<numconns.load(); i++)
+		  {
+		    eid = my_eid;
+		    dtime = runningtime;
+		    dtime += delta;
+		    time = dtime/1000;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
+		    dtime += delta;
+		    time = dtime/1000;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
+		    dtime += delta;
+		    time = dtime/1000;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    eventData.push_back(record);
+		    dtime += delta;
+		    time = dtime/1000;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
+		  }
+		my_eid = eid;
+		runningtime = dtime;
+	      }
 	    double dtime;
 	    long int eid;
 	    for(int i=0; i<numconns.load(); i++)
 	      {
 		eid = my_eid;
 		dtime = runningtime;
-		dtime += delta;
-		time = dtime/1000;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-		if (DEBUG)
-		  (*out)<<inputString<<std::endl;
-		record.clear();
-		getFields(inputString, &record, numFields);
-		std::cout<<"Event "<<j<<" conn "<<i<<" record size "<<record.size()<<" ev data size "<<eventData.size()<<std::endl;
-		eventData.push_back(record);
-		dtime += delta;
-		time = dtime/1000;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
 		if (DEBUG)
 		  (*out)<<inputString<<std::endl;
 		record.clear();
@@ -316,51 +353,17 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		eventData.push_back(record);
 		dtime += delta;
 		time = dtime/1000;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-		record.clear();
-		getFields(inputString, &record, numFields);
-		if (DEBUG)
-		  (*out)<<inputString<<std::endl;
-		eventData.push_back(record);
-		dtime += delta;
-		time = dtime/1000;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",WAIT,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
 		if (DEBUG)
 		  (*out)<<inputString<<std::endl;
 		record.clear();
 		getFields(inputString, &record, numFields);
 		eventData.push_back(record);
 	      }
-	    my_eid = eid;
-	    runningtime = dtime;
+	    my_conn_id += numconns.load();
+	    my_time += 1000;		
 	  }
-	double dtime;
-	long int eid;
-	for(int i=0; i<numconns.load(); i++)
-	  {
-	    eid = my_eid;
-	    dtime = runningtime;
-	    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-	    if (DEBUG)
-	      (*out)<<inputString<<std::endl;
-	    record.clear();
-	    getFields(inputString, &record, numFields);
-	    eventData.push_back(record);
-	    dtime += delta;
-	    time = dtime/1000;
-	    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-	    if (DEBUG)
-	      (*out)<<inputString<<std::endl;
-	    record.clear();
-	    getFields(inputString, &record, numFields);
-	    eventData.push_back(record);
-	  }
-	my_conn_id += numconns.load();
-      }
-    // We're starting a new file
-    if (lastLine == 0)
-      {
-	if (!makeup.load())
+	else
 	  {
 	    if(useMMap) {
 	      if (DEBUG)
@@ -391,7 +394,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		  loopedCount = loopedCount + 1;
 		}
 	    }
-	}
+	  }
       }
     std::vector<int>::size_type i = lastLine;
       
@@ -528,6 +531,8 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	if (!isDone)
 	  {
 	    lastLine = 0;
+	    if (makeup.load())
+	      eventData.clear();
 	  }
 	else
 	  {
@@ -633,6 +638,13 @@ int FileWorker::findMin()
   return mt;
 }
 
+void FileWorker::setStartTime(unsigned long int sTime)
+{
+  startTime = sTime;
+  if (DEBUG)
+    (*out)<<"Start time set to "<<startTime<<std::endl;
+}
+
 void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) {
     long int nextET = -1;
     int currentThread = 0;
@@ -693,34 +705,6 @@ void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) 
 		  (*listenerTime)[e.serverString] = e.ms_from_start;
 		  outEvents[i]->addEvent(e_shr);
 		}
-		/* Jelena
-	      else if(e.ms_from_start > (*listenerTime)[e.serverString] + SRV_GAP)
-		{
-		  Event es = e;
-		  es.ms_from_start = (*listenerTime)[e.serverString] + 2*SRV_UPSTART;
-		  es.type = SRV_END;
-		  if (DEBUG)
-		    (*out)<<"Should Close server "<<e.serverString<<" at time "<<es.ms_from_start<<" listener time is "<<(*listenerTime)[e.serverString]<<" and event time is "<<e.ms_from_start<<std::endl;
-
-		  std::shared_ptr<Event> e_shrs = std::make_shared<Event>(es);
-		  
-		  outEvents[t]->addEvent(e_shrs);
-		  outEvents[t]->addEvent(e_shr);
-		  threadToEventCount[t]++;
-		  threadToEventCount[t]++;
-		  
-		  (*listenerTime)[e.serverString] = e.ms_from_start;
-		  if (DEBUG)
-		    (*out)<<"Closed server "<<e.serverString<<" at time "<<es.ms_from_start<<" and changed listener time for "<<e.serverString<<" to "<<(*listenerTime)[e.serverString]<<std::endl;
-		}
-	      else
-		{
-		  // Server has already started but we have to note this conn
-		  e_shr->type = SRV_STARTED;
-		  e_shr->event_id = -1;
-		  outEvents[t]->addEvent(e_shr);
-		  threadToEventCount[t]++;
-		  }*/
 	    }
 	  else
 	    {	      
@@ -733,13 +717,9 @@ void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) 
 		      if ((*it) != t)
 			{
 			  outEvents[*it]->addEvent(e_shr);
-			  //if (DEBUG)
-			  //(*out)<<"Also added event "<<e.event_id<<" for conn "<<e.conn_id<<" type "<<EventNames[e.type]<<" to thread "<<*it<<std::endl;
 			}
 		    }
 		}
-	      //if (DEBUG)
-	      //(*out)<<"Added event "<<e.event_id<<" for conn "<<e.conn_id<<" type "<<EventNames[e.type]<<" to thread "<<t<<std::endl;
 	    }
 	  e_shr.reset();
 	  fileEventsAddedCount++;

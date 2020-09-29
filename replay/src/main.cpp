@@ -21,6 +21,11 @@ std::atomic<int> numconns = 1;
 std::atomic<int> numbytes = 100;
 std::atomic<int> numevents = 1;
 std::mutex fileHandlerMTX;
+std::mutex statsMTX;
+
+long int global_throughput;
+long int global_events;
+
 std::condition_variable fileHandlerCV;
 bool loadMoreFileEvents = true;
 std::string servString = "";
@@ -228,7 +233,15 @@ void print_stats(int flag)
 	}
     }
   double avgd = (double)delay/completed;
-  std::cout<<"Successfully completed "<<completed<<"/"<<total<<" avg delay "<<avgd<<" ms"<<std::endl;
+  long int t, e;
+  statsMTX.lock();
+  t = global_throughput;
+  e = global_events;
+  global_throughput = 0;
+  global_events = 0;
+  statsMTX.unlock();
+  
+  std::cout<<"Successfully completed "<<completed<<"/"<<total<<" avg delay "<<avgd<<" ms, throughput "<<t<<" events "<<e<<std::endl;
   if (flag)
     myfile.close();
 }
@@ -505,8 +518,10 @@ int main(int argc, char* argv[]) {
       waitForPeer();
 
     std::chrono::high_resolution_clock::time_point startPoint = std::chrono::high_resolution_clock::now();
-    startTime = std::chrono::duration_cast<std::chrono::milliseconds>(startPoint.time_since_epoch()).count();
-  
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+    fw->setStartTime(now);
+    
     for (int i=0; i<numThreads.load(); i++)
       {
 	eventHandlerThread[i] = new std::thread(&EventHandler::loop, eh[i], startPoint);

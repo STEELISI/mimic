@@ -125,7 +125,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		       if (DEBUG)
 			 (*out)<<"RECVd 1 "<<total<<" bytes for conn "<<dispatchJob.conn_id<<std::endl;
 		       myConns[dispatchJob.conn_id].waitingToRecv -= total;
-
+		       my_bytes += total;
 		       if (DEBUG)
 			 (*out)<<"RECV waiting now for "<<myConns[dispatchJob.conn_id].waitingToRecv<<" conn "<<dispatchJob.conn_id<<std::endl;
 		       // Check if lower than 0 or 0 move new event ahead
@@ -242,6 +242,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		myConns[dispatchJob.conn_id].waitingToSend -= n;
 		if (DEBUG)
 		  (*out)<<"Successfuly handled SEND event for conn "<<dispatchJob.conn_id<<" for "<<n<<" bytes\n";
+		my_bytes += n;
 	      }
 	  }
 	  catch(int e)
@@ -476,7 +477,9 @@ void EventHandler::checkOrphanConns(long int now)
 }
 
 void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime) {
-  long int now = msSinceStart(startTime);
+  long int now = msSinceStart(startTime);  
+  long int lastStats = now;
+  
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(startTime.time_since_epoch()).count();
   if (DEBUG)
     (*out)<<"EH: looping, start time is "<<ms<<" now is "<<now<<std::endl;
@@ -505,7 +508,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     //(*out)<<"EH: Beginning of loop time " <<now<<std::endl;
     // Put a chunk of incomingFileEvents into connection-specific queues
     while(nextEventTime >= 0 && thisChunk <= 1000) { // was maxQueuedFileEvents
-      eventsHandled++;
+      //eventsHandled++;
       std::shared_ptr<Event> job;
       //(*out)<< "EH: Event handler TRYING TO GET JOB" << std::endl;
       if(incomingFileEvents->getEvent(job)){
@@ -518,7 +521,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	  }
 	/* Check if we've processed a fair chunk (maxQueuedFileEvents/10 events) and	*/
 	/* warn the FileWorker that it should top off the file event queue. 		*/
+	
 	Event dispatchJob = *job;
+
 	if (DEBUG)
 	  (*out)<< "File Event handler GOT JOB " << EventNames[dispatchJob.type] <<" serverstring "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event id "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" now "<<now<<" value "<<dispatchJob.value<<" server "<<dispatchJob.serverString<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
 	if (dispatchJob.type == SEND || dispatchJob.type == RECV || dispatchJob.type == CLOSE)
@@ -587,7 +592,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 
     if (DEBUG)
       (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<" eventstohandle "<<eventsToHandle->getLength()<<std::endl;
-    if((fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents)
+    if((!makeup.load() && (fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents) || (makeup.load() && myConns.size() < 2*numconns.load()))
       {
 	lastEventCountWhenRequestingForMore += fileEventsHandledCount;
 	if (DEBUG)
@@ -697,6 +702,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		    {
 		      if (DEBUG)
 			(*out)<<"Successfully handled SEND for conn "<<conn_id<<" for "<<n<<" bytes\n";
+		      my_bytes += n;
 		      myConns[conn_id].waitingToSend -= n;
 		      if (myConns[conn_id].waitingToSend > 0)
 			{
@@ -747,6 +753,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		{
 		  long int waited = myConns[conn_id].waitingToRecv;
 		  myConns[conn_id].waitingToRecv -= total;
+		  my_bytes += total;
 		  
 		  if (DEBUG)
 		    (*out)<<"RECV waiting now for "<<myConns[conn_id].waitingToRecv<<" on conn "<<conn_id<<std::endl;
@@ -786,8 +793,21 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     else
       idle = 0;
     */
-    if (DEBUG)
-      (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<< std::endl;
+    //if (DEBUG)
+    my_events += eventsHandled;
+
+
+    now = msSinceStart(startTime);
+    if (now - lastStats >= 1000)
+      {
+	statsMTX.lock();
+	global_throughput += my_bytes;
+	global_events += my_events;
+	my_events = 0;
+	my_bytes = 0;
+	statsMTX.unlock();
+      }
+    (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<< std::endl;
     eventsHandled = 0;
   }
   for (auto it = myConns.begin(); it != myConns.end(); it++)

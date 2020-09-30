@@ -36,7 +36,11 @@ class FileWorker {
     
         long int fileEventsAddedCount;
 	long int my_conn_id;
+	long int my_eid;
 	long int my_time;
+	long int my_runningtime;
+	long int my_events;
+	
 	unsigned short int my_sport;
 	unsigned short int my_cport;
 	unsigned long int startTime;

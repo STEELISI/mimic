@@ -12,6 +12,8 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     my_time = 10000;
     my_sport = 10000;
     my_cport = 20000;
+    my_runningtime = 0;
+    my_events = 0;
     startTime = 0;
     
     connTime = c2time;
@@ -221,6 +223,8 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
       {
 	if (makeup.load())
 	  {
+	    bool done = false;
+	    
 	    if (DEBUG)
 	      (*out)<<"Making up events\n";
 	    
@@ -240,69 +244,102 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	    
 	    std::string server, client;
 	    int sport, cport;
-	    long int my_eid = 0;
 	    std::string inputString="";
 	    double time;
 	    int numFields = 8;
 	    
 	    std::vector <std::string> record;
-	    
-	    for(int i=0; i<numconns.load(); i++)
+	    int totalevents = 0;
+	    if (my_events == 0)
 	      {
-		if (i < numconns.load()/2)
+		my_eid = 0;
+		for(int i=0; i<numconns.load(); i++)
 		  {
-		    if (isServer)
+		    if (i < numconns.load()/2)
 		      {
-			server = peerIP;
-			client = myIP;
+			if (isServer)
+			  {
+			    server = peerIP;
+			    client = myIP;
+			  }
+			else
+			  {
+			    client = peerIP;
+			    server = myIP;
+			  }
 		      }
 		    else
 		      {
-			client = peerIP;
-			server = myIP;
+			if (!isServer)
+			  {
+			    server = peerIP;
+			    client = myIP;
+			  }
+			else
+			  {
+			    client = peerIP;
+			    server = myIP;
+			  }
 		      }
+		    // Create initial connection
+		    
+		    time = my_time - SRV_UPSTART;
+		    
+		    if (time > lastEventTime)
+		      lastEventTime = time;
+		    
+		    
+		    time /= 1000;
+		    inputString = "CONN,"+std::to_string(my_conn_id+i)+","+client+","+std::to_string((my_cport++) % 65536 + 1)+",->,"+server+","+std::to_string(my_sport+i)+","+std::to_string(time);
+		    totalevents++;
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
 		  }
-		else
-		  {
-		    if (!isServer)
-		      {
-			server = peerIP;
-			client = myIP;
-		      }
-		    else
-		      {
-			client = peerIP;
-			server = myIP;
-		      }
-		  }
-		// Create initial connection
-		
-		time = my_time - SRV_UPSTART;
-		
-		if (time > lastEventTime)
-		  lastEventTime = time;
-		
-	    	
-		time /= 1000;
-		inputString = "CONN,"+std::to_string(my_conn_id+i)+","+client+","+std::to_string((my_cport++) % 65536 + 1)+",->,"+server+","+std::to_string(my_sport+i)+","+std::to_string(time);
-		if (DEBUG)
-		  (*out)<<inputString<<std::endl;
-		record.clear();
-		getFields(inputString, &record, numFields);
-		eventData.push_back(record);
 	      }
 	    time = my_time;
 	    double delta = 1000/numevents.load()/4.0;
-	    double runningtime = time;
+	    my_runningtime = time;
+	    if (DEBUG)
+	      (*out)<<"Total events "<<totalevents<<std::endl;
 	    
-	    for (int j=0; j<numevents.load();j++)
+	    for (int j=my_events; j<numevents.load();j++)
 	      {
 		double dtime;
 		long int eid;
 		for(int i=0; i<numconns.load(); i++)
 		  {
+		    if (i < numconns.load()/2)
+		      {
+			if (isServer)
+			  {
+			    server = peerIP;
+			    client = myIP;
+			  }
+			else
+			  {
+			    client = peerIP;
+			    server = myIP;
+			  }
+		      }
+		    else
+		      {
+			if (!isServer)
+			  {
+			    server = peerIP;
+			    client = myIP;
+			  }
+			else
+			  {
+			    client = peerIP;
+			    server = myIP;
+			  }
+		      }
+		    
 		    eid = my_eid;
-		    dtime = runningtime;
+		    dtime = my_runningtime;
 		    dtime += delta;
 		    time = dtime/1000;
 		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",SEND,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
@@ -337,31 +374,44 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		    eventData.push_back(record);
 		  }
 		my_eid = eid;
-		runningtime = dtime;
+		totalevents += 4*numconns.load();
+		my_runningtime = dtime;
+		if (DEBUG)
+		  (*out)<<"Total events "<<totalevents<<" my eid "<<my_eid<<std::endl;
+		if (totalevents >= eventsToGet*0.9)
+		  {
+		    my_events = j;    
+		    done = true;
+		    break;
+		  }
 	      }
-	    double dtime;
-	    long int eid;
-	    for(int i=0; i<numconns.load(); i++)
+	    if (!done)
 	      {
-		eid = my_eid;
-		dtime = runningtime;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-		if (DEBUG)
-		  (*out)<<inputString<<std::endl;
-		record.clear();
-		getFields(inputString, &record, numFields);
-		eventData.push_back(record);
-		dtime += delta;
-		time = dtime/1000;
-		inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
-		if (DEBUG)
-		  (*out)<<inputString<<std::endl;
-		record.clear();
-		getFields(inputString, &record, numFields);
-		eventData.push_back(record);
+		double dtime;
+		long int eid;
+		for(int i=0; i<numconns.load(); i++)
+		  {
+		    eid = my_eid;
+		    dtime = my_runningtime;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+client+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
+		    dtime += delta;
+		    time = dtime/1000;
+		    inputString = "EVENT,"+std::to_string(my_conn_id+i)+","+std::to_string(eid++)+","+server+",CLOSE,"+std::to_string(numbytes.load())+",0,"+std::to_string(time);
+		    if (DEBUG)
+		      (*out)<<inputString<<std::endl;
+		    record.clear();
+		    getFields(inputString, &record, numFields);
+		    eventData.push_back(record);
+		  }		
+		my_conn_id += numconns.load();
+		my_time += 1000;
+		my_events = 0;
 	      }
-	    my_conn_id += numconns.load();
-	    my_time += 1000;		
 	  }
 	else
 	  {

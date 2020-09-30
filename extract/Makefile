@@ -1,2 +1,2 @@
 all: 
-	g++ -g -o fe fe.cc -ltrace
+	g++ -g -o mimic-extract mimic-extract.cc -ltrace

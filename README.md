@@ -5,6 +5,11 @@ contains *mimic-extract* tool, which extracts TCP flow information from pcap fil
 directory contains *mimic-replay* tool, which uses flow information to generate flows
 using TCP sockets. Mimic-replay can also "make up" traffic based on configuration parameters.
 
+## Requirements
+
+Extraction tool requires libtrace, which can be installed from
+[link][https://github.com/LibtraceTeam/libtrace].
+
 ## Flow format
 
 A flow in mimic is represented as one CONN event (start of the flow), multiple SEND/WAIT

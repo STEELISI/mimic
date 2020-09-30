@@ -8,7 +8,7 @@ using TCP sockets. Mimic-replay can also "make up" traffic based on configuratio
 ## Requirements
 
 Extraction tool requires libtrace, which can be installed from
-[link][https://github.com/LibtraceTeam/libtrace].
+https://github.com/LibtraceTeam/libtrace.
 
 ## Flow format
 

@@ -3,6 +3,6 @@
 Mimic-extract tool extracts application data units (ADUs) from TCP flows in a pcap trace.
 Other protocols are ignored.
 
-Mimic-extract tool  uses the flow format described in [this document] (../README.md).
+Mimic-extract tool  uses the flow format described in [this document](../README.md).
 The tool infers SEND and WAIT events from the 
 

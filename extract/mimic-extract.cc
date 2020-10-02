@@ -16,8 +16,8 @@
 #
 */
 
-/* Takes input trace as PCAP and outputs 
-   comma separated data about connections and events  */
+/* Takes input trace as pcap and outputs 
+   comma separated data about connections and events.  */
 
 
 using namespace std;
@@ -33,7 +33,6 @@ using namespace std;
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <limits.h>
-
 #include <libtrace.h>
 
 #include <map>
@@ -43,32 +42,68 @@ using namespace std;
 #include <unordered_map>
 #include <unordered_set>
 
+// Connection states
 enum states{OPEN, HALFCLOSED, CLOSED, TBD};
 
+// Shift CLOSE events by this much
 const double THRESH = 0.00001;
+
+// Shift start of conns by this much so
+// we can start servers before clients
 const double SHIFT = 10;
+
+// Start a server this many second
+// before a client tries to connect to it
 const double SRV_SHIFT = 6;
 
-uint64_t flow_counter = 0;
-
+// Counter for flows
 int conn_id_counter = 0;
-int nextport=1024;
 
-double bucketlimits[] = {0, 0.001, 0.01, 0.1, 1, 10};
+// If we are rewriting IPs then we have to
+// rewrite ports too. Start from this port number
+// and cycle through.
+int nextport=1024;
+unordered_set<int> portsInUse;
+
+int checkUsed(int port)
+{
+  if (portsInUse.find(port) == portsInUse.end())
+    {
+      portsInUse.insert(port);
+      return port;
+    }
+  if (nextport > 65535)
+    nextport = 1024;
+  
+  while (portsInUse.find(nextport) != portsInUse.end())
+    {
+      nextport++;
+    }
+  // Nothing was free at the moment
+  if (nextport > 65535)
+    return -1;
+  portsInUse.insert(nextport);
+  return nextport;
+}
+
+
+// Global vars and constants
 double old_ts = 0;
 double start_ts = 0;
-int DELTHRESH = 60;
-int CBUF = 200;
-int BUF = 4000000;
-int MSS = 1500;
-int MAXMSS = 15000;
-
-#define STRLEN 150
-
 bool orig = true;
 string client, server;
 unordered_map<int, int> portsToChange;
-unordered_set<int> portsInUse;
+
+
+// When a flow is inactive, close it after this
+// time. It will be started again if traffic shows up.
+int DELTHRESH = 60;
+
+// Collect samples for RTT calculation.
+// Structures below help us store the samples.
+// This is useful for network emulation; it is currently
+// unused.
+double bucketlimits[] = {0, 0.001, 0.01, 0.1, 1, 10};
 
 class avgpair
 {
@@ -84,7 +119,7 @@ public:
   avgpair pairs[6];
   double Mbytes;
   int conns;
-
+  
   ~bucket()
   {
   }
@@ -98,7 +133,7 @@ bool lessthan(avgpair a,  avgpair b)
 
 map<uint32_t, bucket> host_stats;
 
-FILE *events, *hosts;
+FILE *hosts;
 
 void hostinsert(uint32_t ip)
 {
@@ -113,7 +148,7 @@ void hostinsert(uint32_t ip)
   host_stats[ip].conns = 0;
 }
 
-
+// Event structure helps us identify ADUs
 class event
 {
 public:
@@ -127,34 +162,13 @@ public:
   double think_time;
   uint32_t seq;
   uint32_t ack;
-
+  
   ~event()
   {
   }
 };
 
-class printable_event
-{
-public:
-  double time;
-  uint32_t src_ip;
-  char type[5];
-  int bytes;
-  double think_time;
-  printable_event()
-  {
-  }
-  printable_event(double t, uint32_t ip, const char* ty, int b, int tt)
-  {
-    time = t;
-    src_ip = ip;
-    strcpy(type, ty);
-    bytes = b;
-    think_time = tt;
-    
-  }
-};
-
+// This class helps us identify duplicates
 class packet
 {
 
@@ -184,6 +198,7 @@ public:
   }
 };
 
+// Structure that stores flow identifier
 class flow_id
 {
 public:
@@ -215,13 +230,7 @@ public:
 
 };
 
-template <typename M> void FreeClear(M & amap) {
-  for (typename M::iterator it = amap.begin(); it != amap.end(); ++it) {
-    delete it->second;
-  }
-amap.clear();
-}
-
+// Structure that stores state of a flow
 class flow_stats
 {
 public:
@@ -302,27 +311,9 @@ public:
 
 };
 
+// Main structure that stores information about flows
 map <flow_id, flow_stats> flowmap;
 
-
-int checkUsed(int port)
-{
-  if (portsInUse.find(port) == portsInUse.end())
-    {
-      portsInUse.insert(port);
-      return port;
-    }
-  if (nextport > 65535)
-    return -1;
-  while (portsInUse.find(nextport) != portsInUse.end())
-    {
-      nextport++;
-    }
-  if (nextport > 65535)
-    return -1;
-  portsInUse.insert(nextport);
-  return nextport;
-}
 
 
 int process_packet(flow_id fid, int dir, uint32_t src, uint32_t dst, uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id, double ts, int syn, int fin, int psh)
@@ -437,6 +428,11 @@ void close_flow(flow_id fid)
     }
   flowmap.erase(fid);
   flowmap.erase(rid);
+
+  // Free up ports
+  portsInUse.erase(fid.sport);
+  portsInUse.erase(fid.dport);
+			      
 }
 
 void cleanflows(double ts, bool force)

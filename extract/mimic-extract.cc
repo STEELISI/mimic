@@ -19,7 +19,7 @@
 /* 
    Takes input trace as pcap and outputs 
    comma separated data about connections and events 
-   on stdout .  
+   on stdout.  
 */
 
 
@@ -62,7 +62,12 @@ const double SRV_SHIFT = 6;
 // Maximum bytes to send in a pkt
 // We use this to ad-hoc detect new conns
 // on encapsulated IPv6
-const int MAX_GAP = 10000;
+const int MAX_GAP = 1000000;
+
+// How long to wait to start a new conn w same fid
+// This is to avoid starting new conns when there is
+// a RST and a peer keeps sending data after it
+const int TIME_WAIT = 2;
 
 // Counter for flows
 int conn_id_counter = 0;
@@ -250,7 +255,7 @@ public:
   map <uint32_t, int> dst_IDs;
   map <int, event> flow_events;
   long int event_id;
-  uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack;
+  uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack, src_lastseq, dst_lastseq;
   long int src_toack, dst_toack, src_sent, dst_sent, src_waited, dst_waited;
   double src_ack_ts, dst_ack_ts, last_ts;
   enum states state;
@@ -262,7 +267,7 @@ public:
   flow_stats()
   {
     event_id = 0;
-    src_seq = dst_seq = src_ack = dst_ack = src_lastack = dst_lastack = 0;
+    src_seq = dst_seq = src_ack = dst_ack = src_lastack = dst_lastack = src_lastseq = dst_lastseq = 0;
     src_sent = dst_sent = src_toack = dst_toack = src_waited = dst_waited = 0;
     src_toack = dst_toack = 0;
     src_ack_ts = dst_ack_ts = 0;
@@ -303,10 +308,12 @@ public:
 	dst_seq = f.dst_seq;
 	src_ack = f.src_ack;	
 	src_lastack = f.src_lastack;
+	src_lastseq = f.src_lastseq;
 	src_toack = f.src_toack;
 	src_waited = f.src_waited;
 	dst_ack = f.dst_ack;
 	dst_lastack = f.dst_lastack;
+	dst_lastseq = f.dst_lastseq;
 	dst_toack = f.dst_toack;
 	dst_waited = f.dst_waited;
 	src_ack_ts = f.src_ack_ts;
@@ -321,6 +328,9 @@ public:
 
 // Main structure that stores information about flows
 map <flow_id, flow_stats> flowmap;
+
+// Blocked flows
+map <flow_id, double> blocklist;
 
 
 // This function updates flow stats (e.g., current seq number)
@@ -360,6 +370,7 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
     {
       // Found duplicate sequence number
       map <uint32_t, packet>::iterator it = (*seqs).find(sseq);
+      //cout<<"Find "<<sseq<<" result "<<(it == (*seqs).end())<<endl;
       if (it != (*seqs).end())
 	{
 	  if (eseq == it->second.eseq && (syn || fin || psh))
@@ -428,13 +439,15 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t seq,
 	       uint32_t ack, int payload_size, bool orig)
 {
+  //cout<<ts<<" Starting flow "<<fid.srcIP<<"->"<<fid.dstIP<<" seq "<<seq<<" ack "<<ack<<endl;
   flow_stats FS;
   uint16_t src_port = fid.sport;
   uint16_t dst_port = fid.dport;
   flowmap[fid] = FS;
   flowmap[fid].src_str = src_str;
   flowmap[fid].dst_str = dst_str;
-  flowmap[fid].src_seq = seq-payload_size;
+  flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq-payload_size;
+  flowmap[fid].dst_lastseq = ack;
   flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
   if (src_port >= dst_port)
     {
@@ -463,12 +476,8 @@ bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t 
   return true;
 }
 
-void handleState(flow_id fid, double ts, int payload_size, uint32_t ack, libtrace_tcp_t * tcp)
+void handleState(flow_id fid, libtrace_tcp_t * tcp)
 {
-  if (payload_size == 0)
-    flowmap[fid].dst_lastack = ack;
-  flowmap[fid].dst_ack = ack;
-  flowmap[fid].dst_ack_ts = ts;
   if (tcp->fin)
     if (flowmap[fid].state == OPEN)
       flowmap[fid].state = HALFCLOSED;
@@ -515,10 +524,23 @@ void cleanFlows(double ts, bool force)
 	{
 	  map<flow_id, flow_stats>::iterator it = fit;
 	  fit++;
+	  //cout<<"Close5";
 	  closeFlow(it->first);
 	}
       else
 	fit++;
+    }
+  map<flow_id, double>::iterator bit;
+  for (bit = blocklist.begin(); bit != blocklist.end();)
+    {
+      if(ts - bit->second >= TIME_WAIT)
+	{
+	  map<flow_id, double>::iterator it = bit;
+	  bit++;
+	  blocklist.erase(it);
+	}
+      else
+	bit++;
     }
 }
 
@@ -607,6 +629,9 @@ void processPacket(libtrace_packet_t *packet) {
 	// so we don't remember flows that are only SYNs
 	if (payload_size > 0) 
 	  {
+	    // Still in TIME_WAIT
+	    if(blocklist.find(did) != blocklist.end())
+	      return;
 	    bool started = startFlow(did, ts, src_str, dst_str, seq, ack, payload_size, orig);
 	    if (!started)
 	      return;
@@ -624,34 +649,56 @@ void processPacket(libtrace_packet_t *packet) {
       {
 	fid = rid;
       }
-
+    if (flowmap[fid].dst_lastseq == 0)
+      flowmap[fid].dst_lastseq = ack;
+    //printf("Time %lf seq %ld ack %ld\n", ts, seq, ack);
+    //cout<<"Time "<<ts<<" seq "<<seq<<" ack "<<ack<<" src lastseq "<<flowmap[fid].src_lastseq<<" dst lastseq "<<flowmap[fid].dst_lastseq<<endl;
     // Close the flow if needed    
     if ((tcp->fin || tcp->rst) && payload_size == 0)
       {
+	//cout<<"Close1";
+	blocklist[did] = ts;
+	blocklist[rid] = ts;
 	closeFlow(fid);
 	return;
       }
     // New connection with same fid so we close the old one
     if (tcp->syn) 
       {
+	//cout<<"Close2";
 	closeFlow(fid);
 	return;
       }
+    
     // New connection on encapsulated IPv6
-    if (src == fid.srcIP && (flowmap[fid].src_seq > 0 && abs((int)(seq - flowmap[fid].src_seq)) > MAX_GAP))
+    /*
+    if (src == fid.srcIP && (flowmap[fid].src_seq > 0 && abs((int)(seq - flowmap[fid].src_lastseq)) > MAX_GAP))
       {
-	closeFlow(fid);
-	bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
-	if (!started)
-	  return;
+	int duplicate = checkDuplicate(fid, 0, src, dst, seq-payload_size, seq, ack, id, ts,
+				   tcp->syn, tcp->fin, payload_size);
+	if (!duplicate)
+	  {
+	    cout<<"Close3 seq "<<seq<<" last srcseq "<<flowmap[fid].src_lastseq<<endl;
+	    closeFlow(fid);
+	    bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
+	    if (!started)
+	      return;
+	  }
       }
-    if (src == fid.dstIP && (flowmap[fid].dst_seq > 0 &&abs((int)(seq - flowmap[fid].dst_seq)) > MAX_GAP))
+    if (src == fid.dstIP && (flowmap[fid].dst_seq > 0 &&abs((int)(seq - flowmap[fid].dst_lastseq)) > MAX_GAP))
       {
-	closeFlow(rid);
-	bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
-	if (!started)
-	  return;
+	int duplicate = checkDuplicate(fid, 1, dst, src, seq-payload_size, seq, ack, id, ts,
+				   tcp->syn, tcp->fin, payload_size);
+	if (!duplicate)
+	  {
+	    cout<<"Close4";
+	    closeFlow(rid);
+	    bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
+	    if (!started)
+	      return;
+	  }
       }
+    */
     long int acked = 0;
     
     // Process packet and generate SEND/WAIT records
@@ -671,25 +718,28 @@ void processPacket(libtrace_packet_t *packet) {
 		if(flowmap[fid].src_toack < ack - flowmap[fid].src_ack)
 		  {
 		    long int diff = ack - flowmap[fid].src_ack;
-		    if (diff > 0)
+		    if (diff > 0 && diff < MAX_GAP)
 		      {
 			if (flowmap[fid].event_id == 0)
 			  cout<<flowmap[fid].conn_str<<endl;
 			cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
 			    <<dst_str<<",SEND,"<<diff<<",0.0,"<<ts-start_ts+SHIFT-THRESH<<endl;
+			flowmap[fid].dst_lastseq = ack;
 			flowmap[fid].dst_sent += diff;
 			flowmap[fid].src_toack += diff;
 		      }
 		  }
 		acked = flowmap[fid].src_toack;
 	      }
-	    handleState(fid, ts, payload_size, ack, tcp);
+	    if (payload_size == 0)
+	      flowmap[fid].src_lastack = ack;
+	    flowmap[fid].src_ack = ack;
+	    flowmap[fid].src_ack_ts = ts;
+	    handleState(fid, tcp);
 	  }
       }
     else
       {
-	duplicate = checkDuplicate(fid, 1, dst, src, seq-payload_size, seq, ack, id, ts,
-				   tcp->syn, tcp->fin, payload_size);
 	
 	last_ack_ts = flowmap[fid].dst_ack_ts;
 	
@@ -702,19 +752,24 @@ void processPacket(libtrace_packet_t *packet) {
 		if(flowmap[fid].dst_toack < ack - flowmap[fid].dst_ack)
 		  {
 		    long int diff = ack - flowmap[fid].dst_ack;
-		    if (diff > 0)
+		    if (diff > 0 && diff < MAX_GAP)
 		      {
 			if (flowmap[fid].event_id == 0)
 			  cout<<flowmap[fid].conn_str<<endl;
 			cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
 			    <<dst_str<<",SEND,"<<diff<<",0.0,"<<ts-start_ts-THRESH+SHIFT<<endl;
+			flowmap[fid].src_lastseq = ack;
 			flowmap[fid].dst_toack += diff;
 			flowmap[fid].src_sent += diff;
 		      }
 		  }		      
 		acked = flowmap[fid].dst_toack;
 	      }
-	    handleState(fid, ts, payload_size, ack, tcp);
+	     if (payload_size == 0)
+	       flowmap[fid].dst_lastack = ack;
+	     flowmap[fid].dst_ack = ack;
+	     flowmap[fid].dst_ack_ts = ts;
+	    handleState(fid, tcp);
 	  }
       }
 	  
@@ -738,11 +793,13 @@ void processPacket(libtrace_packet_t *packet) {
 	      <<",SEND,"<<payload_size<<","<<wait<<","<<ts-start_ts+SHIFT<<endl;
 	  if (src == fid.srcIP)
 	    {
+	      flowmap[fid].src_lastseq = seq;
 	      flowmap[fid].dst_toack += payload_size;
 	      flowmap[fid].src_sent += payload_size;
 	    }
 	  else
 	    {
+	      flowmap[fid].dst_lastseq = seq;
 	      flowmap[fid].src_toack += payload_size;
 	      flowmap[fid].dst_sent += payload_size;
 	    }
@@ -782,15 +839,22 @@ void processPacket(libtrace_packet_t *packet) {
 // Print help message about program usage
 void printHelp(string prog)
 {
-  cout<<"\n\tUsage: "<<prog<<" [-c oneIP -s otherIP] pcapfile\n\n"
-    "\tIf you don't specify any arguments, original ports and IPs\n"
-    "\twill be mined. Otherwise, IPs will be overwritten with the IPs\n" 
-    "\tyou have specified and duplicate client ports will be replaced by\n" 
-    "\trandom other client ports. This process is deterministic, so running \n"
-    "\tthe code on two different machines will produce identical outputs. \n\n"
-    "\tAdditionally, if there are any ports on replay machines that are\n" 
-    "\treserved, you can specify them in ports.csv file and they will be \n" 
-    "\tautomatically replaced in a deterministic manner\n\n";
+  cout<<"\n\tUsage: "<<prog<<" [-c oneIP -s otherIP] [-h] [-a GAP] pcapfile\n\n"
+
+    "\tIn the absence of -c and -s flags, original ports and IPs will be mined.\n"
+    "\tOtherwise, IPs will be overwritten with the IPs you have specified\n"
+    "\tand duplicate client ports will be replaced by random other client ports.\n"
+    "\tThis process is deterministic, so running the code on two different\n"
+    "\tmachines will produce identical outputs.\n\n"
+
+    "\tAdditionally, if there are any ports on replay machines that are\n"
+    "\treserved (e.g., 22), you can specify them in ports.csv file and they will be\n"
+    "\tautomatically replaced.\n\n"
+
+    "\tFlag -h prints the help message.\n\n"
+
+    "\tFlag -a followed by GAP, which is a number in decimal notation, denotes that consecutive\n"
+    "\tSEND events by the same IP within time GAP should be aggregated into one\n\n";
 }
 
 // Main program

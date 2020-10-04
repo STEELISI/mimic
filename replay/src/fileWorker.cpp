@@ -481,6 +481,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	      
 	      /* Fill out connIDToConnectionPairMap */
 	      connectionPair cp = connectionPair(src, sport, dst, dport);
+	      
 	      connIDToConnectionPairMap[connID] = std::make_shared<connectionPair>(cp);
 	      /* Add an event to start this connection. */
 	      Event e;

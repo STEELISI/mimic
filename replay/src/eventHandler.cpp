@@ -352,7 +352,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	    }
 	  if (DEBUG)
 	    (*out)<<" Deleting stats for conn "<<dispatchJob.conn_id<<"\n";
-	  
+
 	  connIDToConnectionMap->erase(dispatchJob.conn_id);
 	  myConns.erase(dispatchJob.conn_id);
 	  sockfdToConnIDMap.erase(dispatchJob.sockfd);

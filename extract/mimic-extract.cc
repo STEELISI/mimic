@@ -670,35 +670,6 @@ void processPacket(libtrace_packet_t *packet) {
 	return;
       }
     
-    // New connection on encapsulated IPv6
-    /*
-    if (src == fid.srcIP && (flowmap[fid].src_seq > 0 && abs((int)(seq - flowmap[fid].src_lastseq)) > MAX_GAP))
-      {
-	int duplicate = checkDuplicate(fid, 0, src, dst, seq-payload_size, seq, ack, id, ts,
-				   tcp->syn, tcp->fin, payload_size);
-	if (!duplicate)
-	  {
-	    cout<<"Close3 seq "<<seq<<" last srcseq "<<flowmap[fid].src_lastseq<<endl;
-	    closeFlow(fid);
-	    bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
-	    if (!started)
-	      return;
-	  }
-      }
-    if (src == fid.dstIP && (flowmap[fid].dst_seq > 0 &&abs((int)(seq - flowmap[fid].dst_lastseq)) > MAX_GAP))
-      {
-	int duplicate = checkDuplicate(fid, 1, dst, src, seq-payload_size, seq, ack, id, ts,
-				   tcp->syn, tcp->fin, payload_size);
-	if (!duplicate)
-	  {
-	    cout<<"Close4";
-	    closeFlow(rid);
-	    bool started = startFlow(fid, ts, src_str, dst_str, seq, ack, payload_size, orig);
-	    if (!started)
-	      return;
-	  }
-      }
-    */
     long int acked = 0;
     
     // Process packet and generate SEND/WAIT records
@@ -712,6 +683,7 @@ void processPacket(libtrace_packet_t *packet) {
 	// If this is not a hardware duplicate 
 	if (duplicate < 2 && ack > flowmap[fid].src_ack)
 	  {
+	    /*
 	    if (flowmap[fid].src_lastack > 0)
 	      {
 		// One-way traffic, need to generate send first 
@@ -731,6 +703,7 @@ void processPacket(libtrace_packet_t *packet) {
 		  }
 		acked = flowmap[fid].src_toack;
 	      }
+	    */
 	    if (payload_size == 0)
 	      flowmap[fid].src_lastack = ack;
 	    flowmap[fid].src_ack = ack;
@@ -746,6 +719,7 @@ void processPacket(libtrace_packet_t *packet) {
 	// If this is not a hardware duplicate 
 	if (duplicate < 2 && ack > flowmap[fid].dst_ack)
 	  {
+	    /*
 	    if (flowmap[fid].dst_lastack > 0)
 	      {
 		// One-way traffic, need to generate send first 
@@ -765,10 +739,11 @@ void processPacket(libtrace_packet_t *packet) {
 		  }		      
 		acked = flowmap[fid].dst_toack;
 	      }
-	     if (payload_size == 0)
-	       flowmap[fid].dst_lastack = ack;
-	     flowmap[fid].dst_ack = ack;
-	     flowmap[fid].dst_ack_ts = ts;
+	    */
+	    if (payload_size == 0)
+	      flowmap[fid].dst_lastack = ack;
+	    flowmap[fid].dst_ack = ack;
+	    flowmap[fid].dst_ack_ts = ts;
 	    handleState(fid, tcp);
 	  }
       }

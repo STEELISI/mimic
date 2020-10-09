@@ -26,6 +26,8 @@ struct connData
   long int waitingToSend = 0;
   long int delay = 0;
   long int lastPlannedEvent = 0;
+  long int origStart = 0;
+  long int origTime = 0;
   EventHeap eventQueue;
   long int time = 0;
   enum conn_state state = INIT;
@@ -78,8 +80,10 @@ class EventHandler {
 	std::unordered_map<std::string, long int> srvStarted;
 	std::unordered_map<std::string, long int> orphanConn;
 	std::map<long int, struct stats>* connStats;
-	
+	std::unordered_map<std::string,std::list<long int>> pendingConns;
+	  
         EventHeap waitHeap;
+	long int myTime, peerTime;
 
         void processAcceptEvents(long int);
 	void storeConnections();        
@@ -89,7 +93,7 @@ class EventHandler {
         void newConnectionUpdate(int sockfd, long int connID, long int planned, long int now);
 	void connectionUpdate(long int connID, long int planned, long int now);
 	long int acceptNewConnection(struct epoll_event *poll_e, long int now);
-	void getNewEvents(long int conn_id);
+	long int getNewEvents(long int conn_id);
 	void checkStalledConns(long int now);
 	void checkOrphanConns(long int now);
 	void checkQueues();

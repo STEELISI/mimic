@@ -123,7 +123,13 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		   if (total > 0)
 		     {
 		       if (DEBUG)
-			 (*out)<<"RECVd 1 "<<total<<" bytes for conn "<<dispatchJob.conn_id<<std::endl;
+			 (*out)<<"RECVd 1 "<<total<<" bytes for conn "<<dispatchJob.conn_id<<" orig time "<<dispatchJob.origTime<<" peer time "<<peerTime<<std::endl;
+		       if (dispatchJob.origTime > peerTime)
+			 {
+			   peerTime = dispatchJob.origTime;
+			   if(DEBUG)
+			     (*out)<<"Peer time changedt to "<<peerTime;
+			 }
 		       myConns[dispatchJob.conn_id].waitingToRecv -= total;
 		       my_bytes += total;
 		       if (DEBUG)
@@ -159,55 +165,82 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
         }
         /* We handle the connection and update our socket<->connid maps. */
         case CONNECT: {
-            /* Get our address. */
-	  long int conn_id = dispatchJob.conn_id;
-	  (*connStats)[conn_id].thread = myID;
-	  myConns[conn_id].lastPlannedEvent = dispatchJob.ms_from_start;
-	  //auto it = connIDToConnectionMap->find(dispatchJob.conn_id);
-	  if(true)
+	  if (DEBUG)
+	    (*out)<<"Handling CONNECT my time "<<myTime<<" peer "<<peerTime<<" diff "<<myTime - peerTime<<" srv "<<SRV_UPSTART<<std::endl;
+	  if (myTime - peerTime > SRV_UPSTART && peerTime > 0 && dispatchJob.origTime > peerTime)
 	    {
-	      //it != connIDToConnectionMap->end()) {
-	      myConns[dispatchJob.conn_id].state = CONNECTING;
-	      (*connStats)[dispatchJob.conn_id].state = CONNECTING;
-	      struct sockaddr_in caddr = getAddressFromString(dispatchJob.connString);
-	      struct sockaddr_in saddr = getAddressFromString(dispatchJob.serverString);
-	      int sockfd = getIPv4TCPSock((const struct sockaddr_in *)&caddr);
 	      if (DEBUG)
-		(*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
-	      if(connect(sockfd, (const struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) == -1) {
-		if (DEBUG)
-		  (*out)<<"Didn't connect right away\n";
-		if (errno != EINPROGRESS)
-		  {
-		    close(sockfd); // should return to pool and try later Jelena
-		    char errmsg[200];
-		    sprintf(errmsg, " connecting failed, conn %d src %s",dispatchJob.conn_id,dispatchJob.serverString.c_str());
-		    perror(errmsg);
-		    return;
-		  }
-		else
-		  {
-		    myPollHandler->watchForWrite(sockfd);
-		    newConnectionUpdate(sockfd, dispatchJob.conn_id, dispatchJob.ms_from_start, now);
-		  }
-	      }
-	      else
+		(*out)<<"Postpone connecting for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<" conn time "<<dispatchJob.origTime<<" my time "<<myTime<<" peer "<<peerTime<<std::endl;
+	      dispatchJob.ms_from_start += 1000;
+	      eventsToHandle->addEvent(dispatchJob);
+	      break;
+	    }
+	  else
+	    {
+	      /* Get our address. */
+	      if (dispatchJob.ms_from_start > myTime)
 		{
-		  myConns[dispatchJob.conn_id].state = EST;
-		  newConnectionUpdate(sockfd, dispatchJob.conn_id, dispatchJob.ms_from_start, now);
-		  (*connStats)[dispatchJob.conn_id].last_completed++;
-		  (*connStats)[dispatchJob.conn_id].started = now;
+		  myTime = dispatchJob.ms_from_start;
 		  if (DEBUG)
-		    (*out)<<"Connected successfully 1 for conn "<<dispatchJob.conn_id<<" state is now "<<myConns[dispatchJob.conn_id].state<<" last completed 9 "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
-		  getNewEvents(dispatchJob.conn_id);
+		    (*out)<<"Starting conn "<<dispatchJob.conn_id<<" my time "<<myTime<<std::endl;
+		}
+	      long int conn_id = dispatchJob.conn_id;
+	      (*connStats)[conn_id].thread = myID;
+	      myConns[conn_id].lastPlannedEvent = dispatchJob.ms_from_start;
+	      myConns[conn_id].origTime = dispatchJob.ms_from_start;
+	      //auto it = connIDToConnectionMap->find(dispatchJob.conn_id);
+	      if(true)
+		{
+		  //it != connIDToConnectionMap->end()) {
+		  myConns[dispatchJob.conn_id].state = CONNECTING;
+		  (*connStats)[dispatchJob.conn_id].state = CONNECTING;
+		  struct sockaddr_in caddr = getAddressFromString(dispatchJob.connString);
+		  struct sockaddr_in saddr = getAddressFromString(dispatchJob.serverString);
+		  int sockfd = getIPv4TCPSock((const struct sockaddr_in *)&caddr);
+		  if (DEBUG)
+		    (*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
+		  if(connect(sockfd, (const struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) == -1) {
+		    if (DEBUG)
+		      (*out)<<"Didn't connect right away\n";
+		    if (errno != EINPROGRESS)
+		      {
+			close(sockfd);
+			if (DEBUG)
+			  {
+			    char errmsg[200];
+			    sprintf(errmsg, " connecting failed, conn %d src %s",dispatchJob.conn_id,dispatchJob.serverString.c_str());
+			    (*out)<<errmsg<<std::endl;
+			    //perror(errmsg);
+			  }
+			// Not ready, return to queue and try again
+			dispatchJob.ms_from_start += 1000;
+			eventsToHandle->addEvent(dispatchJob);
+			return;
+		      }
+		    else
+		      {
+			myPollHandler->watchForWrite(sockfd);
+			newConnectionUpdate(sockfd, dispatchJob.conn_id, dispatchJob.ms_from_start, now);
+		      }
 		  }
-	    }  
+		  else
+		    {
+		      myConns[dispatchJob.conn_id].state = EST;
+		      newConnectionUpdate(sockfd, dispatchJob.conn_id, dispatchJob.ms_from_start, now);
+		      (*connStats)[dispatchJob.conn_id].last_completed++;
+		      (*connStats)[dispatchJob.conn_id].started = now;
+		      if (DEBUG)
+			(*out)<<"Connected successfully 1 for conn "<<dispatchJob.conn_id<<" state is now "<<myConns[dispatchJob.conn_id].state<<" last completed 9 "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
+		      getNewEvents(dispatchJob.conn_id);
+		    }
+		}  
 	      else {
                 std::cerr << "Could not find connection info for connID " << dispatchJob.conn_id << std::endl;
                 return;
 	      }
-            break;
-        }
+	      break;
+	    }
+	}
         /* Send thread handles these. */
     case SEND: {
       connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
@@ -239,9 +272,14 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      }
 	    else
 	      {
-		myConns[dispatchJob.conn_id].waitingToSend -= n;
+		long int conn_id = dispatchJob.conn_id;
+		myConns[conn_id].waitingToSend -= n;
 		if (DEBUG)
-		  (*out)<<"Successfuly handled SEND event for conn "<<dispatchJob.conn_id<<" for "<<n<<" bytes\n";
+		  (*out)<<"Successfuly handled SEND event for conn "<<conn_id<<" for "<<n<<" bytes\n";
+		if (myConns[conn_id].origTime < dispatchJob.origTime)
+		  myConns[conn_id].origTime = dispatchJob.origTime;
+		if (myConns[conn_id].origTime > myTime)
+		  myTime = myConns[conn_id].origTime;
 		my_bytes += n;
 	      }
 	  }
@@ -270,12 +308,20 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  if(strToConnID.find(dispatchJob.connString) == strToConnID.end())
 	    {
 	      strToConnID[dispatchJob.connString] = dispatchJob.conn_id;
-	      connData cd;
-	      stats cs;
+	      //connData cd;
+	      //stats cs;
 	      //myConns[dispatchJob.conn_id] = cd;
 	      //(*connStats)[dispatchJob.conn_id] = cs;
 	      if (DEBUG)
-		(*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<std::endl;
+		(*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<" pushed back "<<dispatchJob.connString<<std::endl;
+	      myConns[dispatchJob.conn_id].origStart = dispatchJob.ms_from_start + SRV_UPSTART;
+	    }
+	  else
+	    {
+	      pendingConns[dispatchJob.connString].push_back(dispatchJob.conn_id);
+	      if (DEBUG)
+		(*out)<<"Associated pending conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<" now there is "<<strToConnID[dispatchJob.connString]<<std::endl;
+	      myConns[dispatchJob.conn_id].origStart = dispatchJob.ms_from_start + SRV_UPSTART;
 	    }
 	  break;
 	}
@@ -285,7 +331,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	{
 	  strToConnID[dispatchJob.connString] = dispatchJob.conn_id;
 	  if (DEBUG)
-	    (*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<std::endl;
+	    (*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<" string "<<dispatchJob.connString<<std::endl;
 	}
       std::string servString = dispatchJob.serverString;
       struct sockaddr_in addr;
@@ -356,7 +402,8 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  connIDToConnectionMap->erase(dispatchJob.conn_id);
 	  myConns.erase(dispatchJob.conn_id);
 	  sockfdToConnIDMap.erase(dispatchJob.sockfd);
-	  
+	  strToConnID.erase(dispatchJob.connString);
+	  //strToConnID[dispatchJob.connString] = -1; // Jelena - put here next one or erase
 	  if (DEBUG)
 	    (*out)<<"Closed sock "<<dispatchJob.sockfd<<" for conn "<<dispatchJob.conn_id<<" last completed "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
 	}
@@ -417,7 +464,7 @@ void EventHandler::storeConnections()
 bool EventHandler::startup() {
   if (DEBUG)
     (*out)<<"Event handler starting\n";
-  storeConnections();
+  //storeConnections();
   return true;
 }
 
@@ -426,8 +473,8 @@ void EventHandler::checkStalledConns(long int now)
   // Go through conns and try to load more events if there are any
   for (auto it = myConns.begin(); it != myConns.end();)
     {
-      if (DEBUG)
-	(*out)<<"Checking conn "<<it->first<<" waiting to send "<<myConns[it->first].waitingToSend<<" and to recv "<<myConns[it->first].waitingToRecv<<" state "<<myConns[it->first].state<<" stalled "<<myConns[it->first].stalled<<std::endl;
+      //if (DEBUG)
+      //(*out)<<"Checking conn "<<it->first<<" waiting to send "<<myConns[it->first].waitingToSend<<" and to recv "<<myConns[it->first].waitingToRecv<<" state "<<myConns[it->first].state<<" stalled "<<myConns[it->first].stalled<<std::endl;
       if (myConns[it->first].waitingToSend > 0)
 	myPollHandler->watchForWrite(myConns[it->first].sockfd);
       if (myConns[it->first].waitingToSend <= 0 &&  myConns[it->first].waitingToRecv <= 0 && myConns[it->first].state != DONE && myConns[it->first].stalled)
@@ -466,7 +513,16 @@ void EventHandler::checkOrphanConns(long int now)
 	  (*connStats)[conn_id].last_completed++;
 	  (*connStats)[conn_id].started = now;
 	  (*connStats)[conn_id].thread = myID;
-	  getNewEvents(sit->second);
+	  getNewEvents(conn_id);
+	  long int ftime = myConns[conn_id].origStart;
+	  if (DEBUG)
+	    (*out)<<"Accepted conn "<<conn_id<<" ftime "<<ftime<<std::endl;
+	  if (ftime > peerTime)
+	    {
+	      peerTime = ftime;
+	      if (DEBUG)
+		(*out)<<"Accepted conn "<<conn_id<<" peer time "<<peerTime<<std::endl;
+	    }
 	  auto dit = it;
 	  it++;
 	  orphanConn.erase(dit);
@@ -479,6 +535,7 @@ void EventHandler::checkOrphanConns(long int now)
 void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime) {
   long int now = msSinceStart(startTime);  
   long int lastStats = now;
+  myTime = peerTime = 0;
   
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(startTime.time_since_epoch()).count();
   if (DEBUG)
@@ -651,9 +708,17 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		  (*connStats)[conn_id].last_completed++;
 		  (*connStats)[conn_id].started = now;
 		  (*connStats)[conn_id].thread = myID;
-		  if (DEBUG)
-		    (*out)<<"Accepted conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
+		  long int ftime = myConns[conn_id].origStart;
 		  getNewEvents(conn_id);
+		  if (ftime > peerTime)
+		    {
+		      peerTime = ftime;
+		      if (DEBUG)
+			(*out)<<"Accepted conn "<<conn_id<<" peer time "<<peerTime<<std::endl;
+		    }
+		  if (DEBUG)
+		    (*out)<<"Accepted conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed "<<(*connStats)[conn_id].last_completed<<" ftime " <<ftime<<" peer time "<<peerTime<<std::endl;
+
 		}
 	    };
 	  continue;
@@ -702,6 +767,10 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		    {
 		      if (DEBUG)
 			(*out)<<"Successfully handled SEND for conn "<<conn_id<<" for "<<n<<" bytes\n";
+		      
+		      if (myConns[conn_id].origTime > myTime)
+			myTime = myConns[conn_id].origTime;
+
 		      my_bytes += n;
 		      myConns[conn_id].waitingToSend -= n;
 		      if (myConns[conn_id].waitingToSend > 0)
@@ -746,6 +815,14 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		}
 	      total += n;
 
+	      if (DEBUG)
+		(*out)<<"RECVd 1 "<<total<<" bytes for conn "<<conn_id<<" orig time "<<myConns[conn_id].origTime<<" peer time "<<peerTime<<std::endl;
+	      if (myConns[conn_id].origTime > peerTime)
+		{
+		  peerTime = myConns[conn_id].origTime;
+		  if(DEBUG)
+		    (*out)<<"Peer time changedt to "<<peerTime;
+		}
 	      if (DEBUG)
 		(*out)<<"RECVd 2 "<<total<<" bytes for conn "<<conn_id<<std::endl;
 	      
@@ -807,7 +884,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	my_bytes = 0;
 	statsMTX.unlock();
       }
-    (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<< std::endl;
+    (*out)<< "Relooping, time now " <<now<<" events handled "<<eventsHandled<<" my time "<<myTime<<" peer time "<<peerTime<<std::endl;
     eventsHandled = 0;
   }
   for (auto it = myConns.begin(); it != myConns.end(); it++)
@@ -815,11 +892,11 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
   
 }
 
-void EventHandler::getNewEvents(long int conn_id)
+long int EventHandler::getNewEvents(long int conn_id)
 {
   EventHeap* e = &myConns[conn_id].eventQueue;
-  int nextEventTime = e->nextEventTime();
-  
+  long int nextEventTime = e->nextEventTime();
+  long int ftime = nextEventTime;
   // Jelena
   if (DEBUG)
     (*out)<<"Getting new events for conn "<<conn_id<<" next event time is "<<nextEventTime<<" state "<<(*connStats)[conn_id].state<<std::endl;
@@ -836,18 +913,19 @@ void EventHandler::getNewEvents(long int conn_id)
       job.sockfd = myConns[conn_id].sockfd;
       if (DEBUG)
 	(*out)<< "Event handler moved new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<(job.ms_from_start+myConns[conn_id].delay)<<" because of delay "<<myConns[conn_id].delay<<std::endl;
+      job.origTime = job.ms_from_start;
       job.ms_from_start += myConns[conn_id].delay;
       eventsToHandle->addEvent(job);
       nextEventTime = e->nextEventTime();
       if (nextEventTime < 0)
 	{
 	  myConns[conn_id].stalled = true;
-	  return;
+	  return ftime;
 	}
       if (job.type == RECV)
 	break;
     }
-  // Here we could perhaps close the connection if we're out of the events Jelena
+  return ftime;
 }
 
 long int EventHandler::acceptNewConnection(struct epoll_event *poll_e, long int now) {
@@ -898,12 +976,30 @@ long int EventHandler::acceptNewConnection(struct epoll_event *poll_e, long int 
 
     /* Map names to a conn. */
     auto it = strToConnID.find(connString);
-    if(it == strToConnID.end()) {
-      (*out) << "Got connection but could not look up connID." << std::endl;
-
-      orphanConn[connString] = newSockfd; // jelena remember start time
-      return -2; 
-    }
+    if(it == strToConnID.end())
+      {
+	if (DEBUG)
+	  (*out) << "Got connection but could not look up connID." << std::endl;
+	
+	orphanConn[connString] = newSockfd; // jelena remember start time
+	return -2; 
+      }
+    else
+      {
+	long int conn_id =  strToConnID[connString];
+	if (DEBUG)
+	  (*out) << "Got connection from "<<connString<<" currently there is conn "<<strToConnID[connString]<<" current state "<<(*connStats)[conn_id].state<<std::endl;
+	if ((*connStats)[conn_id].state >= EST && pendingConns.find(connString) != pendingConns.end() && !pendingConns[connString].empty())
+	  {
+	    if (DEBUG)
+	      (*out) << "Got connection from "<<connString<<" could associate it with "<< pendingConns[connString].front()<<std::endl;
+	    strToConnID[connString] = pendingConns[connString].front();
+	    conn_id = strToConnID[connString];
+	    pendingConns[connString].pop_front();
+	  }
+	if (DEBUG)
+	  (*out)<<"Got connection from "<<connString<<" conn "<<strToConnID[connString]<<std::endl;
+      }
     long int conn_id = it->second;
     
     /* Update our data structures. */

@@ -28,7 +28,7 @@ extern std::condition_variable fileHandlerCV;
 extern bool loadMoreFileEvents;
 bool returnLoadMoreFileEvents();
 
-#define maxQueuedFileEvents 10000
+#define maxQueuedFileEvents 10000000
 
 #define SRV_UPSTART 4000
 #define SRV_GAP 10000
@@ -82,6 +82,7 @@ class Event {
 	std::string connString = "";
         int sockfd = -1;
         long int ms_from_start = 1;	 /* Keep track of event time relative to start in ms. */
+	long int origTime = 0;
         long int ms_from_last_event = -1;
         EventType type = NONE;        
         long int conn_id = -1;

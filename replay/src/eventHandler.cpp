@@ -161,7 +161,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		 }
 	     }
             // From file events. We should dispatch this.
-            break;
+	   break;
         }
         /* We handle the connection and update our socket<->connid maps. */
         case CONNECT: {
@@ -498,8 +498,8 @@ void EventHandler::checkOrphanConns(long int now)
   // Go through conns and try to load more events if there are any
   for (auto it = orphanConn.begin(); it != orphanConn.end(); )
     {
-      if (DEBUG)
-	(*out)<<"Checking orphaned conn "<<it->first<<std::endl;
+      //if (DEBUG)
+      //(*out)<<"Checking orphaned conn "<<it->first<<std::endl;
       auto sit = strToConnID.find(it->first);
       if (sit != strToConnID.end())
 	{
@@ -898,8 +898,8 @@ long int EventHandler::getNewEvents(long int conn_id)
   long int nextEventTime = e->nextEventTime();
   long int ftime = nextEventTime;
   // Jelena
-  if (DEBUG)
-    (*out)<<"Getting new events for conn "<<conn_id<<" next event time is "<<nextEventTime<<" state "<<(*connStats)[conn_id].state<<std::endl;
+  //if (DEBUG)
+  //(*out)<<"Getting new events for conn "<<conn_id<<" next event time is "<<nextEventTime<<" state "<<(*connStats)[conn_id].state<<std::endl;
 
 
   if (nextEventTime >= 0) // ||  (*connStats)[conn_id].state == DONE)
@@ -915,6 +915,8 @@ long int EventHandler::getNewEvents(long int conn_id)
 	(*out)<< "Event handler moved new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<(job.ms_from_start+myConns[conn_id].delay)<<" because of delay "<<myConns[conn_id].delay<<std::endl;
       job.origTime = job.ms_from_start;
       job.ms_from_start += myConns[conn_id].delay;
+      if (job.type == CLOSE)
+	job.ms_from_start += 1000;
       eventsToHandle->addEvent(job);
       nextEventTime = e->nextEventTime();
       if (nextEventTime < 0)

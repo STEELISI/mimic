@@ -121,7 +121,7 @@ int getIPv4TCPSock(const struct sockaddr_in * sa) {
 
       if(bind(s, (const struct sockaddr *)sa, sizeof(struct sockaddr_in)) <0) {
 	char msg[100];
-	sprintf(msg, "bind failed %u\n", sa->sin_addr.s_addr);
+	sprintf(msg, "bind failed %d\n", ntohs(sa->sin_port));
 	perror(msg);
 	return(-1);
       }

@@ -54,6 +54,7 @@ File 202010011400.10K.pcap contains the first 10K TCP packets from MAWI samplepo
 provided by the WIDE project at: https://mawi.wide.ad.jp/mawi/samplepoint-F/2020/202010011400.html
 
 Run
+
     mimic-extract 202010011400.10K.pcap
 
 The output should be identical to 202010011400.10K.csv

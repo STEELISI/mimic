@@ -105,6 +105,7 @@ double old_ts = 0;
 double start_ts = 0;
 bool orig = true;
 string client, server;
+double gap;
 unordered_map<int, int> portsToChange;
 
 
@@ -243,6 +244,24 @@ public:
 
 };
 
+class bunch
+{
+
+public:
+  bunch()
+  {
+    bytes = 0;
+    ts = 0;
+    src = "";
+  }
+
+  string src;
+  double ts;
+  long int bytes;
+};
+
+
+
 // Structure that stores state of a flow
 class flow_stats
 {
@@ -263,6 +282,8 @@ public:
   string src_str;
   string dst_str;
   string conn_str;
+  bunch stored;
+
   
   flow_stats()
   {
@@ -302,6 +323,7 @@ public:
 	dst_seqs = f.dst_seqs;
 	src_acks = f.src_acks;
 	dst_acks = f.dst_acks;
+	stored = f.stored;
 	flow_events = f.flow_events;
 	event_id = f.event_id;
 	src_seq = f.src_seq;
@@ -370,7 +392,6 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
     {
       // Found duplicate sequence number
       map <uint32_t, packet>::iterator it = (*seqs).find(sseq);
-      //cout<<"Find "<<sseq<<" result "<<(it == (*seqs).end())<<endl;
       if (it != (*seqs).end())
 	{
 	  if (eseq == it->second.eseq && (syn || fin || psh))
@@ -439,7 +460,6 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t seq,
 	       uint32_t ack, int payload_size, bool orig)
 {
-  //cout<<ts<<" Starting flow "<<fid.srcIP<<"->"<<fid.dstIP<<" seq "<<seq<<" ack "<<ack<<endl;
   flow_stats FS;
   uint16_t src_port = fid.sport;
   uint16_t dst_port = fid.dport;
@@ -493,8 +513,15 @@ void closeFlow(flow_id fid)
   // Reverse ID
   flow_id rid(fid.dstIP, fid.srcIP, fid.dport,fid.sport);
 
-  if (flowmap[fid].event_id > 0)
+  if (flowmap[fid].event_id > 0 || flowmap[fid].stored.bytes > 0)
     {
+      if (flowmap[fid].stored.bytes > 0)
+	{
+	  if (flowmap[fid].event_id == 0)
+	    cout<<flowmap[fid].conn_str<<endl;
+	  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+	      <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+	}
       if (flowmap[fid].src_toack > 0)
 	cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",WAIT,"<<flowmap[fid].src_toack<<",0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<endl;
       cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<endl;
@@ -524,7 +551,6 @@ void cleanFlows(double ts, bool force)
 	{
 	  map<flow_id, flow_stats>::iterator it = fit;
 	  fit++;
-	  //cout<<"Close5";
 	  closeFlow(it->first);
 	}
       else
@@ -651,12 +677,10 @@ void processPacket(libtrace_packet_t *packet) {
       }
     if (flowmap[fid].dst_lastseq == 0)
       flowmap[fid].dst_lastseq = ack;
-    //printf("Time %lf seq %ld ack %ld\n", ts, seq, ack);
-    //cout<<"Time "<<ts<<" seq "<<seq<<" ack "<<ack<<" src lastseq "<<flowmap[fid].src_lastseq<<" dst lastseq "<<flowmap[fid].dst_lastseq<<endl;
+
     // Close the flow if needed    
     if ((tcp->fin || tcp->rst) && payload_size == 0)
       {
-	//cout<<"Close1";
 	blocklist[did] = ts;
 	blocklist[rid] = ts;
 	closeFlow(fid);
@@ -665,7 +689,6 @@ void processPacket(libtrace_packet_t *packet) {
     // New connection with same fid so we close the old one
     if (tcp->syn) 
       {
-	//cout<<"Close2";
 	closeFlow(fid);
 	return;
       }
@@ -683,27 +706,6 @@ void processPacket(libtrace_packet_t *packet) {
 	// If this is not a hardware duplicate 
 	if (duplicate < 2 && ack > flowmap[fid].src_ack)
 	  {
-	    /*
-	    if (flowmap[fid].src_lastack > 0)
-	      {
-		// One-way traffic, need to generate send first 
-		if(flowmap[fid].src_toack < ack - flowmap[fid].src_ack)
-		  {
-		    long int diff = ack - flowmap[fid].src_ack;
-		    if (diff > 0 && diff < MAX_GAP)
-		      {
-			if (flowmap[fid].event_id == 0)
-			  cout<<flowmap[fid].conn_str<<endl;
-			cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
-			    <<dst_str<<",SEND,"<<diff<<",0.0,"<<ts-start_ts+SHIFT-THRESH<<endl;
-			flowmap[fid].dst_lastseq = ack;
-			flowmap[fid].dst_sent += diff;
-			flowmap[fid].src_toack += diff;
-		      }
-		  }
-		acked = flowmap[fid].src_toack;
-	      }
-	    */
 	    if (payload_size == 0)
 	      flowmap[fid].src_lastack = ack;
 	    flowmap[fid].src_ack = ack;
@@ -719,27 +721,6 @@ void processPacket(libtrace_packet_t *packet) {
 	// If this is not a hardware duplicate 
 	if (duplicate < 2 && ack > flowmap[fid].dst_ack)
 	  {
-	    /*
-	    if (flowmap[fid].dst_lastack > 0)
-	      {
-		// One-way traffic, need to generate send first 
-		if(flowmap[fid].dst_toack < ack - flowmap[fid].dst_ack)
-		  {
-		    long int diff = ack - flowmap[fid].dst_ack;
-		    if (diff > 0 && diff < MAX_GAP)
-		      {
-			if (flowmap[fid].event_id == 0)
-			  cout<<flowmap[fid].conn_str<<endl;
-			cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
-			    <<dst_str<<",SEND,"<<diff<<",0.0,"<<ts-start_ts-THRESH+SHIFT<<endl;
-			flowmap[fid].src_lastseq = ack;
-			flowmap[fid].dst_toack += diff;
-			flowmap[fid].src_sent += diff;
-		      }
-		  }		      
-		acked = flowmap[fid].dst_toack;
-	      }
-	    */
 	    if (payload_size == 0)
 	      flowmap[fid].dst_lastack = ack;
 	    flowmap[fid].dst_ack = ack;
@@ -762,10 +743,26 @@ void processPacket(libtrace_packet_t *packet) {
       if (payload_size != 0)
 	{
 	  flowmap[fid].last_ts = ts;
-	  if (flowmap[fid].event_id == 0)
-	    cout<<flowmap[fid].conn_str<<endl;
-	  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<src_str
-	      <<",SEND,"<<payload_size<<","<<wait<<","<<ts-start_ts+SHIFT<<endl;
+	  // Always store it, but possibly print out what has been stored
+	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
+	    {
+	      if (flowmap[fid].event_id == 0)
+		cout<<flowmap[fid].conn_str<<endl;
+	      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+	      flowmap[fid].stored.ts = ts;
+	      flowmap[fid].stored.bytes = payload_size;
+	      flowmap[fid].stored.src = src_str;
+	    }
+	  else if (flowmap[fid].stored.bytes == 0)
+	    {
+	      flowmap[fid].stored.ts = ts;
+	      flowmap[fid].stored.bytes = payload_size;
+	      flowmap[fid].stored.src = src_str;
+	    }
+	  else
+	    flowmap[fid].stored.bytes += payload_size;
+	  
 	  if (src == fid.srcIP)
 	    {
 	      flowmap[fid].src_lastseq = seq;
@@ -787,11 +784,21 @@ void processPacket(libtrace_packet_t *packet) {
 	  if (!tcp->syn && payload_size == 0 && acked > 0)
 	    {
 	      flowmap[fid].last_ts = ts;
+	      
 
 	      if (acked > 0)
 		{
 		  if (flowmap[fid].event_id == 0)
 		    cout<<flowmap[fid].conn_str<<endl;
+
+		  if (flowmap[fid].stored.bytes > 0)
+		    {
+		      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+			  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+		      flowmap[fid].stored.ts = 0;
+		      flowmap[fid].stored.bytes = 0;
+		      flowmap[fid].stored.src = "";
+		    }
 		  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
 		      <<src_str<<",WAIT,"<<acked<<","<<wait<<","<<ts-start_ts+SHIFT<<endl;
 		}
@@ -840,8 +847,8 @@ int main(int argc, char *argv[])
   libtrace_packet_t *packet;
   
   int i, opt;
-  
-  while ((opt = getopt(argc, argv, "c:s:h")) != -1) {
+   
+  while ((opt = getopt(argc, argv, "c:s:a:h")) != -1) {
     switch (opt) {
     case 'c':
       client = optarg;
@@ -850,6 +857,9 @@ int main(int argc, char *argv[])
     case 's':
       server = optarg;
       orig = false;
+      break;
+    case 'a':
+      gap = stod(optarg);
       break;
     case 'h':
       printHelp(argv[0]);

@@ -513,8 +513,10 @@ void closeFlow(flow_id fid)
   // Reverse ID
   flow_id rid(fid.dstIP, fid.srcIP, fid.dport,fid.sport);
 
+  // If the flow had any data exchange then print out the closing WAIT and CLOSE statements
   if (flowmap[fid].event_id > 0 || flowmap[fid].stored.bytes > 0)
     {
+      // print stored SEND if any
       if (flowmap[fid].stored.bytes > 0)
 	{
 	  if (flowmap[fid].event_id == 0)
@@ -522,6 +524,7 @@ void closeFlow(flow_id fid)
 	  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 	      <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
 	}
+      // Print WAIT and CLOSE events
       if (flowmap[fid].src_toack > 0)
 	cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",WAIT,"<<flowmap[fid].src_toack<<",0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<endl;
       cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<endl;
@@ -534,8 +537,7 @@ void closeFlow(flow_id fid)
 
   // Free up ports
   portsInUse.erase(fid.sport);
-  portsInUse.erase(fid.dport);
-			      
+  portsInUse.erase(fid.dport);			      
 }
 
 // Every so often go through all the flows
@@ -746,6 +748,7 @@ void processPacket(libtrace_packet_t *packet) {
 	  // Always store it, but possibly print out what has been stored
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
 	    {
+	      // Could be the first record, so print conn string before it
 	      if (flowmap[fid].event_id == 0)
 		cout<<flowmap[fid].conn_str<<endl;
 	      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
@@ -762,7 +765,8 @@ void processPacket(libtrace_packet_t *packet) {
 	    }
 	  else
 	    flowmap[fid].stored.bytes += payload_size;
-	  
+
+	  // Adjust ack numbers
 	  if (src == fid.srcIP)
 	    {
 	      flowmap[fid].src_lastseq = seq;
@@ -785,23 +789,26 @@ void processPacket(libtrace_packet_t *packet) {
 	    {
 	      flowmap[fid].last_ts = ts;
 	      
-
 	      if (acked > 0)
 		{
-		  if (flowmap[fid].event_id == 0)
-		    cout<<flowmap[fid].conn_str<<endl;
-
+		  // Print stored bytes if any
 		  if (flowmap[fid].stored.bytes > 0)
 		    {
+		      // Could be the first event, so print conn string too
+		      if (flowmap[fid].event_id == 0)
+			cout<<flowmap[fid].conn_str<<endl;
 		      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 			  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+		      // Reset what was stored
 		      flowmap[fid].stored.ts = 0;
 		      flowmap[fid].stored.bytes = 0;
 		      flowmap[fid].stored.src = "";
 		    }
+		  // Print out the WAIT event
 		  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
 		      <<src_str<<",WAIT,"<<acked<<","<<wait<<","<<ts-start_ts+SHIFT<<endl;
 		}
+	      // Adjust what has to be acked
 	      if (src == fid.srcIP)
 		{
 		  flowmap[fid].src_toack -= acked;
@@ -835,7 +842,7 @@ void printHelp(string prog)
 
     "\tFlag -h prints the help message.\n\n"
 
-    "\tFlag -a followed by GAP, which is a number in decimal notation, denotes that consecutive\n"
+    "\tFlag -a followed by GAP, which is a number in decimal notation, denoting that consecutive\n"
     "\tSEND events by the same IP within time GAP should be aggregated into one\n\n";
 }
 

@@ -31,7 +31,7 @@ and will reopen it if the data starts flowing again.
 
 ## Usage
 
-    ./mimic-extract [-c oneIP -s otherIP] [-a GAP] [-h] pcapfile
+    mimic-extract [-c oneIP -s otherIP] [-a GAP] [-h] pcapfile
 
 In the absence of -c and -s flags, original ports and IPs will be mined.
 Otherwise, IPs will be overwritten with the IPs	you have specified
@@ -47,6 +47,17 @@ Flag -h prints the help message.
 
 Flag -a followed by GAP, which is a number in decimal notation, denotes that consecutive
 SEND events by the same IP within time GAP should be aggregated into one.
+
+## Testing
+
+File 202010011400.10K.pcap contains the first 10K TCP packets from MAWI samplepoint-F trace
+provided by the WIDE project at: https://mawi.wide.ad.jp/mawi/samplepoint-F/2020/202010011400.html
+
+Run
+    mimic-extract 202010011400.10K.pcap
+
+The output should be identical to 202010011400.10K.csv
+
 
 
 

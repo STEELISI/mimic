@@ -27,7 +27,6 @@
 #include "mimic.h"
 
 
-
 class FileWorker {
     private:
         /* Notifier so that EventHandler can request more events be loaded. */
@@ -63,9 +62,9 @@ class FileWorker {
 	bool isDone = false;
 	bool isProcessed = false;
 	
-        std::unordered_set<std::string> myIPs;
+	std::unordered_set<std::string> myIPs;
 	std::unordered_set<std::string> foreignIPs;
-        std::unordered_set<long int> myConnIDs;
+	std::unordered_set<long int> myConnIDs;
         std::unordered_map<long int, long int> connIDToLastEventTimeMap;
         std::unordered_map<std::string, bool> srvStringToStartBoolMap;
 	std::unordered_map<long int, int> connIDToThread;
@@ -81,7 +80,7 @@ class FileWorker {
         std::vector<std::string> eventsFiles;
         
         /* Event IF Stream. */
-        std::ifstream currentEventIFStream;
+	std::ifstream currentEventIFStream;
         std::vector<std::ifstream*>::iterator eventIFStreamsItr;
         std::vector<std::ifstream*> eventsIFStreams;
         
@@ -99,7 +98,6 @@ class FileWorker {
         std::string trim(const std::string& str, const std::string& whitespace = " \t");
         int loopedCount = 0;
         long int loopDuration = 0;
-        long int loopEventCount = 0;
         long int lastEventTime = 0;
 
 	std::unordered_map<long int, long int>* connTime = 0;

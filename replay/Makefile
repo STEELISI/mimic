@@ -124,17 +124,17 @@ mimiclib/fast:
 .PHONY : mimiclib/fast
 
 #=============================================================================
-# Target rules for targets named mimic
+# Target rules for targets named mimic-replay
 
 # Build rule for target.
-mimic: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 mimic
-.PHONY : mimic
+mimic-replay: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 mimic-replay
+.PHONY : mimic-replay
 
 # fast build rule for target.
-mimic/fast:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/build
-.PHONY : mimic/fast
+mimic-replay/fast:
+	$(MAKE) -f CMakeFiles/mimic-replay.dir/build.make CMakeFiles/mimic-replay.dir/build
+.PHONY : mimic-replay/fast
 
 src/connections.o: src/connections.cpp.o
 
@@ -271,32 +271,32 @@ src/fileWorker.cpp.s:
 	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/fileWorker.cpp.s
 .PHONY : src/fileWorker.cpp.s
 
-src/main.o: src/main.cpp.o
+src/mimic-replay.o: src/mimic-replay.cpp.o
 
-.PHONY : src/main.o
+.PHONY : src/mimic-replay.o
 
 # target to build an object file
-src/main.cpp.o:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.o
-.PHONY : src/main.cpp.o
+src/mimic-replay.cpp.o:
+	$(MAKE) -f CMakeFiles/mimic-replay.dir/build.make CMakeFiles/mimic-replay.dir/src/mimic-replay.cpp.o
+.PHONY : src/mimic-replay.cpp.o
 
-src/main.i: src/main.cpp.i
+src/mimic-replay.i: src/mimic-replay.cpp.i
 
-.PHONY : src/main.i
+.PHONY : src/mimic-replay.i
 
 # target to preprocess a source file
-src/main.cpp.i:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.i
-.PHONY : src/main.cpp.i
+src/mimic-replay.cpp.i:
+	$(MAKE) -f CMakeFiles/mimic-replay.dir/build.make CMakeFiles/mimic-replay.dir/src/mimic-replay.cpp.i
+.PHONY : src/mimic-replay.cpp.i
 
-src/main.s: src/main.cpp.s
+src/mimic-replay.s: src/mimic-replay.cpp.s
 
-.PHONY : src/main.s
+.PHONY : src/mimic-replay.s
 
 # target to generate assembly for a file
-src/main.cpp.s:
-	$(MAKE) -f CMakeFiles/mimic.dir/build.make CMakeFiles/mimic.dir/src/main.cpp.s
-.PHONY : src/main.cpp.s
+src/mimic-replay.cpp.s:
+	$(MAKE) -f CMakeFiles/mimic-replay.dir/build.make CMakeFiles/mimic-replay.dir/src/mimic-replay.cpp.s
+.PHONY : src/mimic-replay.cpp.s
 
 src/mimic.o: src/mimic.cpp.o
 
@@ -359,9 +359,9 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
-	@echo "... edit_cache"
 	@echo "... mimiclib"
-	@echo "... mimic"
+	@echo "... edit_cache"
+	@echo "... mimic-replay"
 	@echo "... src/connections.o"
 	@echo "... src/connections.i"
 	@echo "... src/connections.s"
@@ -377,9 +377,9 @@ help:
 	@echo "... src/fileWorker.o"
 	@echo "... src/fileWorker.i"
 	@echo "... src/fileWorker.s"
-	@echo "... src/main.o"
-	@echo "... src/main.i"
-	@echo "... src/main.s"
+	@echo "... src/mimic-replay.o"
+	@echo "... src/mimic-replay.i"
+	@echo "... src/mimic-replay.s"
 	@echo "... src/mimic.o"
 	@echo "... src/mimic.i"
 	@echo "... src/mimic.s"

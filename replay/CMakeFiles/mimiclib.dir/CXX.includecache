@@ -11,6 +11,10 @@ connections.h
 /users/sunshine/mimic/replay/src/connections.h
 sstream
 -
+sys/types.h
+-
+sys/socket.h
+-
 
 /users/sunshine/mimic/replay/src/eventHandler.cpp
 fstream

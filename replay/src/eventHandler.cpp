@@ -6,11 +6,10 @@
 #include "eventHandler.h"
 #include "connections.h"
 
-
 void EventHandler::processAcceptEvents(long int now) {
 
       std::shared_ptr<Event> job;
-      //out<< "EH:pae: Event handler TRYING TO GET JOB" << std::endl;
+
       while((*incomingAcceptedEvents).getEvent(job)){
 	Event dispatchJob = *job;
 	if (DEBUG)
@@ -170,7 +169,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  if (myTime - peerTime > SRV_UPSTART && peerTime > 0 && dispatchJob.origTime > peerTime)
 	    {
 	      if (DEBUG)
-		(*out)<<"Postpone connecting for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<" conn time "<<dispatchJob.origTime<<" my time "<<myTime<<" peer "<<peerTime<<std::endl;
+		(*out)<<"Postpone connecting for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" serverstring "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<" conn time "<<dispatchJob.origTime<<" my time "<<myTime<<" peer "<<peerTime<<std::endl;
 	      dispatchJob.ms_from_start += 1000;
 	      eventsToHandle->addEvent(dispatchJob);
 	      break;
@@ -198,7 +197,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		  struct sockaddr_in saddr = getAddressFromString(dispatchJob.serverString);
 		  int sockfd = getIPv4TCPSock((const struct sockaddr_in *)&caddr);
 		  if (DEBUG)
-		    (*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" server string "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
+		    (*out)<<"Connecting on sock "<<sockfd<<" for conn "<<dispatchJob.conn_id<<" connstring "<<dispatchJob.connString<<" serverstring "<<dispatchJob.serverString<<" state "<<myConns[dispatchJob.conn_id].state<<std::endl;
 		  if(connect(sockfd, (const struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) == -1) {
 		    if (DEBUG)
 		      (*out)<<"Didn't connect right away\n";
@@ -208,7 +207,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 			if (DEBUG)
 			  {
 			    char errmsg[200];
-			    sprintf(errmsg, " connecting failed, conn %d src %s",dispatchJob.conn_id,dispatchJob.serverString.c_str());
+			    sprintf(errmsg, " connecting failed, conn %ld src %s",dispatchJob.conn_id,dispatchJob.serverString.c_str());
 			    (*out)<<errmsg<<std::endl;
 			    //perror(errmsg);
 			  }
@@ -235,7 +234,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		    }
 		}  
 	      else {
-                std::cerr << "Could not find connection info for connID " << dispatchJob.conn_id << std::endl;
+		std::cerr << "Could not find connection info for connID " << dispatchJob.conn_id << std::endl;
                 return;
 	      }
 	      break;
@@ -301,17 +300,13 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  
       /* We handle these. */
     case SRV_START: {
-      long int conn_id = dispatchJob.conn_id;
-      /* Check if the server is already started */
+       /* Check if the server is already started */
       if (srvStarted.find(dispatchJob.serverString) != srvStarted.end())
 	{
 	  if(strToConnID.find(dispatchJob.connString) == strToConnID.end())
 	    {
 	      strToConnID[dispatchJob.connString] = dispatchJob.conn_id;
-	      //connData cd;
-	      //stats cs;
-	      //myConns[dispatchJob.conn_id] = cd;
-	      //(*connStats)[dispatchJob.conn_id] = cs;
+
 	      if (DEBUG)
 		(*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<" pushed back "<<dispatchJob.connString<<std::endl;
 	      myConns[dispatchJob.conn_id].origStart = dispatchJob.ms_from_start + SRV_UPSTART;
@@ -399,7 +394,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  if (DEBUG)
 	    (*out)<<" Deleting stats for conn "<<dispatchJob.conn_id<<"\n";
 
-	  connIDToConnectionMap->erase(dispatchJob.conn_id);
+	  //connIDToConnectionMap->erase(dispatchJob.conn_id);
 	  myConns.erase(dispatchJob.conn_id);
 	  sockfdToConnIDMap.erase(dispatchJob.sockfd);
 	  strToConnID.erase(dispatchJob.connString);
@@ -449,13 +444,12 @@ void EventHandler::storeConnections()
       if (DEBUG)
 	(*out)<<"Stored connection "<<constring<<" id "<<conn_id<<std::endl;
       connData cd;
-      stats cs;
       myConns[conn_id] = cd;
       //(*connStats)[conn_id] = cs;
       constring.clear();
     }
     else {
-      std::cerr << "Problem creating connection string for server map of connIDs->connection strings." << std::endl;
+      std::cerr << "Problem creating connection std::string for server map of connIDs->connection strings." << std::endl;
     }
     constring.clear();
   }
@@ -549,8 +543,6 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
   bool requested;
   long int processedFileEvents = 0;
   int eventsHandled = 0;
-  int idle = 0;
-  int ITHRESH = 10;
   int rounds = 0;
   
   while(isRunning.load()) {
@@ -649,7 +641,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 
     if (DEBUG)
       (*out)<<"fileEventsHandledCount "<<fileEventsHandledCount<<" file events "<<fileEvents<<" incoming length "<<incomingFileEvents->getLength()<<" nextEventtime "<<nextEventTime<<" eventstohandle "<<eventsToHandle->getLength()<<std::endl;
-    if((!makeup.load() && (fileEventsHandledCount > fileEvents/2 || incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < maxQueuedFileEvents) || (makeup.load() && myConns.size() < 2*numconns.load()))
+    if((!makeup.load() && (incomingFileEvents->getLength() < fileEvents/2 || nextEventTime < 0) && eventsToHandle->getLength() < 5*maxQueuedFileEvents) || (makeup.load() && myConns.size() < 2*numconns.load()))
       {
 	lastEventCountWhenRequestingForMore += fileEventsHandledCount;
 	if (DEBUG)
@@ -1055,7 +1047,7 @@ std::string Connection::dstAddr() {
 
     len = sizeof addr;
     if(getpeername(sockfd, (struct sockaddr*)&addr, &len) == -1) {
-        return std::string("");
+        return string("");
     }
 
     if (addr.sa_family == AF_INET) {
@@ -1069,7 +1061,7 @@ std::string Connection::dstAddr() {
         inet_ntop(AF_INET6, &s->sin6_addr, ipstr, sizeof ipstr);
     }
 
-    std::ostringstream addrStream;
+    ostringstream addrStream;
     addrStream << ipstr << ":" << port;
 
     std::string addrStr = addrStream.str();

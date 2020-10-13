@@ -49,5 +49,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/mimiclib.dir/DependInfo.cmake"
-  "CMakeFiles/mimic.dir/DependInfo.cmake"
+  "CMakeFiles/mimic-replay.dir/DependInfo.cmake"
   )

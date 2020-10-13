@@ -1,5 +1,6 @@
 #include "mimic.h"
 
+
 bool returnLoadMoreFileEvents() {
   return(loadMoreFileEvents | ! isRunning.load());
 }

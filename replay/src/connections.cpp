@@ -1,5 +1,7 @@
 #include "connections.h"
-#include <sstream> 
+#include <sstream>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 
 connectionPair::connectionPair(std::string srcIP, int sport, std::string dstIP, int dport) {
@@ -38,7 +40,7 @@ bool connectionPair::operator==(const connectionPair a) const {
 
 
 bool cmpSockAddrIn(const sockaddr_in* a, const sockaddr_in* b) {
-    //if (std::memcmp(a, b, sizeof(struct sockaddr_in)) == 0) return true;        
+    //if (memcmp(a, b, sizeof(struct sockaddr_in)) == 0) return true;        
     if(a->sin_family == b->sin_family) {
         if(ntohl(a->sin_addr.s_addr) == ntohl(b->sin_addr.s_addr)) {
             if(a->sin_port == b->sin_port) {
@@ -85,7 +87,7 @@ std::string getConnString(const struct sockaddr_in* src, const struct sockaddr_i
     stringStream << srcStr << ":" << sport << "," << dstStr << ":" << dport;
 
     //if (DEBUG)
-    //std::cout << "String stream: " << stringStream.str() << std::endl;
+    //cout << "String stream: " << stringStream.str() << endl;
 
     return stringStream.str();
     return "";
@@ -119,7 +121,8 @@ int getIPv4TCPSock(const struct sockaddr_in * sa) {
       int optval = 1;
       setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
-      if(bind(s, (const struct sockaddr *)sa, sizeof(struct sockaddr_in)) <0) {
+      int b = bind(s, (const struct sockaddr *)sa, sizeof(struct sockaddr_in));
+      if(b <0) {
 	char msg[100];
 	sprintf(msg, "bind failed %d\n", ntohs(sa->sin_port));
 	perror(msg);
@@ -135,7 +138,7 @@ int getIPv4TCPSock(const struct sockaddr_in * sa) {
 void getAddrFromString(std::string servString, struct sockaddr_in* addr)
 {
   char s[MS];
-  std::strcpy(s, servString.c_str());
+  strcpy(s, servString.c_str());
   int i;
   for(i=0; i<strlen(s); i++)
     {

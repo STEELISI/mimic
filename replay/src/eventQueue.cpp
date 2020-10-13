@@ -32,84 +32,76 @@ int compareEvents::operator()(const Event& e1, const Event& e2) {
 // In practice, we probably want to have a single producer thread for multiple EventQueue, and 
 // consumer threads which consume from multiple EventQueues.
 
-//class EventQueue {
 EventQueue::EventQueue(std::string name) {
-            #ifndef __cpp_lib_atomic_is_always_lock_free
-                std::cout << "Exiting due to lack of atomic lock-free support. Check that your compiler is ISO C++ 2017 or 2020 compliant.\n" ;
-                exit(1);
-            #endif
+#ifndef __cpp_lib_atomic_is_always_lock_free
+  std::cout << "Exiting due to lack of atomic lock-free support. Check that your compiler is ISO C++ 2017 or 2020 compliant.\n" ;
+  exit(1);
+#endif
             
-            std::shared_ptr<Event> dummy = nullptr;
-            eventJob * d = new eventJob(dummy);
-            last.store(d, std::memory_order_relaxed); 
-            divider.store(d, std::memory_order_relaxed);
-            first = d;
-            qName = name;
-        }
-        EventQueue::~EventQueue() {
-            while(first != nullptr) {
-                eventJob * tmp = first;
-                first = tmp->next;
-                delete tmp;
-            }
-        }
-        int EventQueue::cleanUp() {
-            while(first != divider.load()) {
-                eventJob * tmp = first;
-                first = first->next;
-		//if (DEBUG)
-		//std::cout << "Use count of epointer before removal of job" << tmp->eptr.use_count() << "\n";
-                tmp->eptr.reset();
-                delete tmp; 
-                numEvents--;
-            }
-            return numEvents;
-        }
+  std::shared_ptr<Event> dummy = nullptr;
+  eventJob * d = new eventJob(dummy);
+  last.store(d, std::memory_order_relaxed); 
+  divider.store(d, std::memory_order_relaxed);
+  first = d;
+  qName = name;
+}
+EventQueue::~EventQueue() {
+  while(first != nullptr) {
+    eventJob * tmp = first;
+    first = tmp->next;
+    delete tmp;
+  }
+}
+int EventQueue::cleanUp() {
+  while(first != divider.load()) {
+    eventJob * tmp = first;
+    first = first->next;
+    
+    tmp->eptr.reset();
+    delete tmp; 
+    numEvents--;
+  }
+  return numEvents;
+}
 
-        int EventQueue::getLength() {
-	  return numEvents;
-        }
+int EventQueue::getLength() {
+  return numEvents;
+}
 
-        void EventQueue::addEvent(std::shared_ptr<Event> e) {
-            eventJob * lastNode = last.load();
-            lastNode->next = new eventJob(e);
-            
-            last.store(lastNode->next);
-            numEvents++;
-            cleanUp();
-	    //if (DEBUG)
-	    //std::cout << qName << ":Num events: " << numEvents << "\n";
-        }
+void EventQueue::addEvent(std::shared_ptr<Event> e) {
+  eventJob * lastNode = last.load();
+  lastNode->next = new eventJob(e);
+  
+  last.store(lastNode->next);
+  numEvents++;
+  cleanUp();
+  
+}
         
         
-        /* The below two functions should only be called by the consumer. */
-        bool EventQueue::getEvent(std::shared_ptr<Event>& job) {
-            eventJob * dividerNode = divider.load();
-            if(dividerNode != last.load()) {
-                //job = divider->next->eptr;
-                if (dividerNode->next != nullptr) {
-                    job = dividerNode->next->eptr;
-                    //divider = divider->next;
-                    divider.store(dividerNode->next);
-		    //if (DEBUG)
-		    //std::cout << qName << "JOB REMOVED" << std::endl;
-                    return true;
-                }
-            }
-            return false;
-        }
-        long int EventQueue::nextEventTime() {
-            eventJob * dividerNode = divider.load();
-            if(dividerNode != last.load()) {
-                if(dividerNode->next != nullptr) {
-                    long int t = dividerNode->next->eptr->ms_from_start;
-                    return t;
-                }
-            }
-            //std::cout << qName << "Time checked. " << std::endl;
-            return -1;
-        }
-//}
+/* The below two functions should only be called by the consumer. */
+bool EventQueue::getEvent(std::shared_ptr<Event>& job) {
+  eventJob * dividerNode = divider.load();
+  if(dividerNode != last.load()) {
+    if (dividerNode->next != nullptr) {
+      job = dividerNode->next->eptr;
+      divider.store(dividerNode->next);
+      
+      return true;
+    }
+  }
+  return false;
+}
+long int EventQueue::nextEventTime() {
+  eventJob * dividerNode = divider.load();
+  if(dividerNode != last.load()) {
+    if(dividerNode->next != nullptr) {
+      long int t = dividerNode->next->eptr->ms_from_start;
+      return t;
+    }
+  }
+  return -1;
+}
 
 
 EventHeap::EventHeap() {
@@ -169,34 +161,34 @@ void EventHeap::print() {
 
 
 bool setNonBlocking(int sockfd) {
-    int status = fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK);
-    if(status == -1) {
-        return false;
-    }
-    return true;
+  int status = fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK);
+  if(status == -1) {
+    return false;
+  }
+  return true;
 }
 
 int getSocket(DomainType domain, TransportType type, const struct sockaddr *localAddr) {
-    int sockfd = -1;
-    int d;
-    if(domain == IPV4) d = AF_INET;
-    else d = AF_INET6;
-    if(type == TCP) {
-        sockfd = socket(d, SOCK_STREAM, 0);
-    }
-    else {
-        std::cout << "Non-TCP not yet supported.\n";
-        sockfd = -1;
-    }
-    if(sockfd == -1) return -1;
-    if(setNonBlocking(sockfd)) return sockfd;
-    return -1;
+  int sockfd = -1;
+  int d;
+  if(domain == IPV4) d = AF_INET;
+  else d = AF_INET6;
+  if(type == TCP) {
+    sockfd = socket(d, SOCK_STREAM, 0);
+  }
+  else {
+    std::cout << "Non-TCP not yet supported.\n";
+    sockfd = -1;
+  }
+  if(sockfd == -1) return -1;
+  if(setNonBlocking(sockfd)) return sockfd;
+  return -1;
 }
 
 bool serverUp(int sockfd) {
-    return true;
+  return true;
 }
 
 bool connectToServer(int sockfd) {
-    return true;
+  return true;
 }

@@ -53,7 +53,7 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
 	    }
         }
         catch(std::ios_base::failure& e) {
-            std::cerr << e.what() << std::endl;
+	  std::cerr << e.what() << std::endl;
         }
     }
     
@@ -105,7 +105,7 @@ ConnectionPairMap * FileWorker::getConnectionPairMap() {
 
 /* Potentially may want to move to an mmapping strategy. */
 std::vector <std::vector <std::string>> FileWorker::loadFile(std::istream* infile, int numFields, int numRecords) {
-
+  
     std::vector <std::vector <std::string>> data;
     
     int i = 0;
@@ -114,14 +114,14 @@ std::vector <std::vector <std::string>> FileWorker::loadFile(std::istream* infil
 
     while(infile->good()) {	
         std::string s;
-        if(!std::getline(*infile, s)) break;
-        std::istringstream ss(s);
+        if(!getline(*infile, s)) break;
+        std::stringstream ss(s);
         std::vector <std::string> record;
         
         while(ss) {
             
             std::string s;
-            if(!std::getline(ss, s, ',')) break;
+            if(!getline(ss, s, ',')) break;
             record.push_back(trim(s));
 
         }
@@ -136,11 +136,11 @@ std::vector <std::vector <std::string>> FileWorker::loadFile(std::istream* infil
 
 void FileWorker::getFields(std::string bufPart, std::vector <std::string>* record, int numFields)
 {
-  std::istringstream ss(bufPart);
+  std::stringstream ss(bufPart);
   
   while(ss) {
     std::string s;
-    if(!std::getline(ss, s, ',')) break;
+    if(!getline(ss, s, ',')) break;
     record->push_back(trim(s));
   }
 }
@@ -183,14 +183,14 @@ std::vector <std::vector <std::string>> FileWorker::loadMMapFile(void * mmapData
 
 
 bool FileWorker::isMyIP(std::string IP) {
-    std::unordered_set<std::string>::const_iterator got = myIPs.find(IP);
+  std::unordered_set<std::string>::const_iterator got = myIPs.find(IP);
     
     if(got == myIPs.end()) return false;
     return true;
 }
 
 bool FileWorker::isMyConnID(long int connID) {
-    std::unordered_set<long int>::const_iterator got = myConnIDs.find(connID);
+  std::unordered_set<long int>::const_iterator got = myConnIDs.find(connID);
     
     if(got == myConnIDs.end()) return false;
     return true;
@@ -209,8 +209,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
       threadToEventCount[i] = 0;
     }
   
-    int currentThread = 0;
-
     int eventsProduced = 0;
 
     // If we're done get out
@@ -243,7 +241,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	      (*out)<<"Makeup traffic between "<<myIP<<" and "<<peerIP<<std::endl;
 	    
 	    std::string server, client;
-	    int sport, cport;
 	    std::string inputString="";
 	    double time;
 	    int numFields = 8;
@@ -456,16 +453,16 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	{
 	  long int connID;
 	  try {
-	      connID = std::stol(eventData[i][1].c_str());
+	    connID = atol(eventData[i][1].c_str());
 	    }
 	    catch(...){
 	      perror("Problem with connData line, continuing.");
 	      continue;
 	    }
 	    std::string src = trim(eventData[i][2]);
-	    int sport = std::stoi(eventData[i][3].c_str());
+	    int sport = atoi(eventData[i][3].c_str());
 	    std::string dst = trim(eventData[i][5]);
-	    int dport = std::stoi(eventData[i][6].c_str());
+	    int dport = atoi(eventData[i][6].c_str());
 	    char ports[10], portd[10];
 	    sprintf(portd, "%d", dport);
 	    sprintf(ports, "%d", sport);
@@ -499,7 +496,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	      //if (DEBUG)
 	      //	(*out) << "4\n";
 	      if(isMyIP(src)) {
-                e.ms_from_start = stod(eventData[i][7])*1000 + SRV_UPSTART;
+                e.ms_from_start = std::stod(eventData[i][7])*1000 + SRV_UPSTART;
                 e.type = CONNECT;
 		if (DEBUG)
 		  (*out)<<"Adding connect event for conn "<<e.conn_id<<"\n";
@@ -512,7 +509,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		e.event_id = -2;
                 e.type = SRV_START;
 		if (DEBUG)
-		  (*out)<<"Server string "<<servString<<std::endl;
+		  (*out)<<"Server std::string "<<servString<<std::endl;
 
 		connIDToServString[e.conn_id] = servString;
 		shortTermHeap->addEvent(e);
@@ -532,12 +529,12 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	else if(eventData[i][0] == "EVENT")
 	  {
 	    //(*out)<<"Check conn id "<<eventData[i][1].c_str()<<std::endl;
-	    if(isMyConnID(std::stol(eventData[i][1].c_str()))) {
+	    if(isMyConnID(atol(eventData[i][1].c_str()))) {
 	      //(*out)<<"My conn\n";
 	      Event e;
-	      e.conn_id = std::stol(eventData[i][1].c_str());
-	      e.event_id = std::stol(eventData[i][2].c_str());      
-	      e.value = std::stoi(eventData[i][5].c_str()); 
+	      e.conn_id = atol(eventData[i][1].c_str());
+	      e.event_id = atol(eventData[i][2].c_str());      
+	      e.value = atoi(eventData[i][5].c_str()); 
 	      e.ms_from_last_event = (long int)(std::stod(eventData[i][6].c_str()) * 1000);
 	      e.ms_from_start = (long int)(std::stod(eventData[i][7].c_str()) * 1000) + loopedCount * loopDuration;
 	      /* Type of event - send and receive. */
@@ -698,7 +695,6 @@ void FileWorker::setStartTime(unsigned long int sTime)
 
 void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) {
     long int nextET = -1;
-    int currentThread = 0;
     
     if (DEBUG)
       (*out)<<"FW looping heap has "<<shortTermHeap->getLength()<<" events\n";

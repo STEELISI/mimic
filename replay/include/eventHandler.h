@@ -18,9 +18,10 @@
 #include "pollHandler.h"
 #include "mimic.h"
 
+
 struct connData
 {
-  std::string serverString = "";
+  std::string serverString= "";
   int sockfd = -1;
   long int waitingToRecv = 0;
   long int waitingToSend = 0;
@@ -70,17 +71,17 @@ class EventHandler {
 	std::ofstream* out;
 	
         /* Data management structures. */
-        ConnectionPairMap * connIDToConnectionMap;
+        ConnectionPairMap *connIDToConnectionMap;
         stringToConnIDMap strToConnID;
-	std::unordered_map<long int, connData> myConns;
-        std::unordered_map<int, long int> sockfdToConnIDMap;
-	std::unordered_map<std::string, long int> serverToSockfd;
-	std::unordered_map<std::string, long int> serverToCounter;
-	std::unordered_map<std::string, long int>* listenerTime;
-	std::unordered_map<std::string, long int> srvStarted;
-	std::unordered_map<std::string, long int> orphanConn;
+	std::map<long int, connData> myConns;
+        std::map<int, long int> sockfdToConnIDMap;
+	std::map<std::string, long int> serverToSockfd;
+	std::map<std::string, long int> serverToCounter;
+	std::map<std::string, long int>* listenerTime;
+	std::map<std::string, long int> srvStarted;
+	std::map<std::string, long int> orphanConn;
 	std::map<long int, struct stats>* connStats;
-	std::unordered_map<std::string,std::list<long int>> pendingConns;
+	std::map<std::string,std::list<long int>> pendingConns;
 	  
         EventHeap waitHeap;
 	long int myTime, peerTime;

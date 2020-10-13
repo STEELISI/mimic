@@ -4,11 +4,11 @@ find_package (Threads)
 
 include_directories("include")
 add_library(mimiclib STATIC src/pollHandler.cpp src/eventNotifier.cpp src/eventQueue.cpp src/eventHandler.cpp src/mimic.cpp src/connections.cpp  src/fileWorker.cpp)
-add_executable(mimic src/main.cpp)   
-target_link_libraries (mimic ${CMAKE_THREAD_LIBS_INIT} mimiclib)   
+add_executable(mimic-replay src/mimic-replay.cpp)   
+target_link_libraries (mimic-replay ${CMAKE_THREAD_LIBS_INIT} mimiclib)   
 
-set (TestProj_VERSION_MAJOR 1)
-set (TestProj_VERSION_MINOR 0)
+set (Mimic_VERSION_MAJOR 1)
+set (Mimic_VERSION_MINOR 0)
 
 set (CMAKE_CXX_COMPILER /usr/bin/clang++)
 

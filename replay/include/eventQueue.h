@@ -14,6 +14,7 @@
 #include "mimic.h"
 
 
+
 class compareEvents {
     public:
         int operator()(const Event& e1, const Event& e2);
@@ -24,15 +25,15 @@ typedef std::priority_queue <Event, std::vector<Event>, compareEvents> jobHeap;
 class EventQueue {
     private:
         struct eventJob {
-            eventJob(std::shared_ptr<Event> ptr): eptr(ptr), next(nullptr) {}
-            std::shared_ptr<Event> eptr;
+	eventJob(std::shared_ptr<Event> ptr): eptr(ptr), next(nullptr) {}
+	  std::shared_ptr<Event> eptr;
             eventJob* next;
         };
         eventJob* first;
         #ifdef __cpp_lib_atomic_is_always_lock_free 
-            static_assert(std::atomic<eventJob*>::is_always_lock_free, "We can't use eventJob* as a lock-free type.");
-            std::atomic<eventJob*> divider;
-            std::atomic<eventJob*> last;
+	static_assert(std::atomic<eventJob*>::is_always_lock_free, "We can't use eventJob* as a lock-free type.");
+	std::atomic<eventJob*> divider;
+	std::atomic<eventJob*> last;
         #endif
         int numEvents = 1;
         
@@ -70,12 +71,4 @@ class EventHeap {
 };
 
 
-
-/*
-void consumeEvents(std::vector<Connection> &connections);
-void produceEvents(std::vector<Connection> &connections);
-void produceEventsTest(EventQueue* eq, int numEvents, int maxWait);
-void workerSpinOffTest(int maxWait, std::shared_ptr<Event> job);
-void consumeEventsTest(EventQueue* eq, int numEvents, int maxWait);
-*/
 #endif

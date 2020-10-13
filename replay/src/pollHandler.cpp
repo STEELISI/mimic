@@ -1,5 +1,6 @@
 #include "pollHandler.h"
 
+
 PollHandler::PollHandler(bool debug) {  
   /* Get our epoll fd. */
   DEBUG = debug;
@@ -13,8 +14,6 @@ PollHandler::~PollHandler() {
 }
 
 void PollHandler::watchForRead(int fd) {
-  //if (DEBUG)
-  //std::cout<<"PH: watching for read on "<<fd<<std::endl;
   watch(fd, READ);
   fdsToWatchForRead.insert(fd);
 }
@@ -49,9 +48,6 @@ void PollHandler::watch(int fd, epollWatchType type) {
   else if(type == WRITE)
     /* If we're watching for a write, don't rearm the fd after an event. */
     event.events = EPOLLOUT | EPOLLONESHOT | EPOLLET;
-  //event.events = EPOLLOUT | EPOLLET;  
-  //if (DEBUG)
-  //std::cout<<"Added watch for "<<fd<<" for event type "<<type<<std::endl;
   if(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event) == -1) {
   
     /* We might have failed because we're already watching this fd. */
@@ -61,7 +57,6 @@ void PollHandler::watch(int fd, epollWatchType type) {
     }
     
     /* We've failed to watch this fd, fail silently*/
-    //std::cerr << "Unable to add fd to epoll to watch for read." <<fd<<" error "<<errno<<" no mem "<<ENOMEM<<std::endl;
   }
   
   return;

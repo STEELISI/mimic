@@ -6,17 +6,6 @@
 #include "eventHandler.h"
 #include "connections.h"
 
-void EventHandler::processAcceptEvents(long int now) {
-
-      std::shared_ptr<Event> job;
-
-      while((*incomingAcceptedEvents).getEvent(job)){
-	Event dispatchJob = *job;
-	if (DEBUG)
-	  (*out)<< "pae: Event handler GOT JOB " << EventNames[dispatchJob.type] <<" conn "<<dispatchJob.conn_id<<" event "<<dispatchJob.event_id<<std::endl;
-	dispatch(dispatchJob, now);
-      }
-}
 
 void EventHandler::newConnectionUpdate(int sockfd, long int conn_id, long int planned, long int now) {
   
@@ -60,11 +49,6 @@ void EventHandler::connectionUpdate(long int conn_id, long int planned, long int
 #define MAXLEN 1000000
 
 void EventHandler::dispatch(Event dispatchJob, long int now) {
-    /* 	EventQueue* incomingFileEvents;
-        --> OLD: EventQueue* incomingAcceptedEvents;
-        EventQueue* incomingRECVedEvents;
-        EventQueue* incomingSentEvents;
-    */
   char buf[MAXLEN];
 
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -187,10 +171,8 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      (*connStats)[conn_id].thread = myID;
 	      myConns[conn_id].lastPlannedEvent = dispatchJob.ms_from_start;
 	      myConns[conn_id].origTime = dispatchJob.ms_from_start;
-	      //auto it = connIDToConnectionMap->find(dispatchJob.conn_id);
 	      if(true)
 		{
-		  //it != connIDToConnectionMap->end()) {
 		  myConns[dispatchJob.conn_id].state = CONNECTING;
 		  (*connStats)[dispatchJob.conn_id].state = CONNECTING;
 		  struct sockaddr_in caddr = getAddressFromString(dispatchJob.connString);
@@ -394,7 +376,6 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  if (DEBUG)
 	    (*out)<<" Deleting stats for conn "<<dispatchJob.conn_id<<"\n";
 
-	  //connIDToConnectionMap->erase(dispatchJob.conn_id);
 	  myConns.erase(dispatchJob.conn_id);
 	  sockfdToConnIDMap.erase(dispatchJob.sockfd);
 	  strToConnID.erase(dispatchJob.connString);
@@ -433,32 +414,9 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
     //dispatchJob.reset();
 }
 
-void EventHandler::storeConnections()
-{
-  for(const auto& pair:*connIDToConnectionMap) {
-    long int conn_id = pair.first;
-    bool success = false;
-    std::string constring = getConnString(&(pair.second->src), &(pair.second->dst), &success);
-    if(success) {
-      strToConnID[constring] = conn_id;
-      if (DEBUG)
-	(*out)<<"Stored connection "<<constring<<" id "<<conn_id<<std::endl;
-      connData cd;
-      myConns[conn_id] = cd;
-      //(*connStats)[conn_id] = cs;
-      constring.clear();
-    }
-    else {
-      std::cerr << "Problem creating connection std::string for server map of connIDs->connection strings." << std::endl;
-    }
-    constring.clear();
-  }
-}
-
 bool EventHandler::startup() {
   if (DEBUG)
     (*out)<<"Event handler starting\n";
-  //storeConnections();
   return true;
 }
 
@@ -630,7 +588,6 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     }
     
     // Should account for eventsHandled here too
-    processAcceptEvents(now);
     now = msSinceStart(startTime);
     
     // Check if we should ask for more events
@@ -1005,7 +962,8 @@ long int EventHandler::acceptNewConnection(struct epoll_event *poll_e, long int 
     return conn_id; // Jelena    
 }
 
-EventHandler::EventHandler(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue* fe, EventQueue* ae, EventQueue* re, EventQueue* se, EventQueue * outserverQ, EventQueue * outSendQ, ConnectionPairMap* ConnMap, std::map<long int, struct stats>* cs, int id, bool debug, std::string myname) {
+EventHandler::EventHandler(EventNotifier* loadMoreNotifier, EventQueue* fe,
+			   std::map<long int, struct stats>* cs, int id, bool debug, std::string myname) {
 
   myConns = {};
   fileEventsHandledCount = 0;
@@ -1013,14 +971,8 @@ EventHandler::EventHandler(EventNotifier* loadMoreNotifier, std::unordered_map<l
   out = new std::ofstream(myname);
   myID = id;
   
-  connIDToConnectionMap = ConnMap;
   incomingFileEvents = fe;
   requestMoreFileEvents = loadMoreNotifier;
-  incomingAcceptedEvents = ae;
-  incomingRECVedEvents = re;
-  incomingSentEvents = se;
-  serverStartnStopReq = outserverQ;
-  sendReq = outSendQ;
   connStats = cs;
   DEBUG = debug;
   

@@ -38,13 +38,6 @@ struct connData
 
 class EventHandler {
     private:
-        /* We start 3 threads */
-        /*	- a server thread (takes in start/stop req, produces accepted events.)  */
-        /*	  out: client/serv addr (sockfd) map: addrs->connid, add sockfd		*/
-        /* 	- a recv thread (produces events of how much is received from each socket.) */
-        /*	  out: sockfd (value) map: sockfd->connid, add value		*/
-        /* 	- a send thread (takes in send/connect req, produces sent event). 	*/
-        /* 	  out: connid (value) map: none, add value		*/
 
         int myID;
 	long int my_bytes;
@@ -58,20 +51,14 @@ class EventHandler {
         /* We consume these. */
         EventNotifier* requestMoreFileEvents;
         EventQueue* incomingFileEvents;
-        EventQueue* incomingAcceptedEvents;
-        EventQueue* incomingRECVedEvents;
-        EventQueue* incomingSentEvents;
-        
+         
         /* We produce these. */
-        EventQueue* serverStartnStopReq;
-        EventQueue* sendReq;
-	EventHeap* eventsToHandle;
+ 	EventHeap* eventsToHandle;
 
 	/* For logging */
 	std::ofstream* out;
 	
         /* Data management structures. */
-        ConnectionPairMap *connIDToConnectionMap;
         stringToConnIDMap strToConnID;
 	std::map<long int, connData> myConns;
         std::map<int, long int> sockfdToConnIDMap;
@@ -86,8 +73,6 @@ class EventHandler {
         EventHeap waitHeap;
 	long int myTime, peerTime;
 
-        void processAcceptEvents(long int);
-	void storeConnections();        
         void processFileEvents();
         void addWait();
         void dispatch(Event dispatchJob, long int now);
@@ -101,7 +86,8 @@ class EventHandler {
 	bool DEBUG = 0;
 	
     public:
-        EventHandler(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue* fe, EventQueue* ae, EventQueue* re, EventQueue* se, EventQueue * outserverQ, EventQueue * outSendQ, ConnectionPairMap* ConnMap, std::map<long int, struct stats>* cs, int id, bool debug, std::string myname);
+        EventHandler(EventNotifier* loadMoreNotifier, EventQueue* fe,
+		     std::map<long int, struct stats>* cs, int id, bool debug, std::string myname);
         ~EventHandler();
         bool startup();
         void loop(std::chrono::high_resolution_clock::time_point startTime);

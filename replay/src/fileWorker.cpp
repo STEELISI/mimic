@@ -4,7 +4,7 @@
 #include "mimic.h"
 
 
-FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** outQ, EventQueue* accept, std::string& ipFile, std::string& forFile,  std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMapFlag) {
+FileWorker::FileWorker(EventNotifier* loadMoreNotifier, EventQueue** outQ, std::string& ipFile, std::string& forFile,  std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMapFlag) {
   
     fileEventsAddedCount = 0;
     useMMap = useMMapFlag;
@@ -16,8 +16,6 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     my_events = 0;
     startTime = 0;
     
-    connTime = c2time;
-    listenerTime = l2time;
     connStats = cs;
     DEBUG = debug;
     out = new std::ofstream(myname);
@@ -37,7 +35,6 @@ FileWorker::FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long 
     
     /* Queue of events for the EventHandler. */
     outEvents = outQ;
-    acceptEvents = accept;
     IPListFile = ipFile;
     foreignIPFile = forFile;
     eventsFiles = eFiles;
@@ -99,9 +96,6 @@ std::string FileWorker::trim(const std::string& str, const std::string& whitespa
     return str.substr(strBegin, strRange);
 }
 
-ConnectionPairMap * FileWorker::getConnectionPairMap() {
-    return &connIDToConnectionPairMap;
-}
 
 /* Potentially may want to move to an mmapping strategy. */
 std::vector <std::vector <std::string>> FileWorker::loadFile(std::istream* infile, int numFields, int numRecords) {
@@ -476,10 +470,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	      
 	      myConnIDs.insert(connID);
 	      
-	      /* Fill out connIDToConnectionPairMap */
-	      connectionPair cp = connectionPair(src, sport, dst, dport);
-	      
-	      connIDToConnectionPairMap[connID] = std::make_shared<connectionPair>(cp);
 	      /* Add an event to start this connection. */
 	      Event e;
 	      e.serverString = servString;
@@ -749,7 +739,6 @@ void FileWorker::loop(std::chrono::high_resolution_clock::time_point startTime) 
 	      // the event from the OS
 	      for(int i=0; i<numThreads.load();i++)
 		{
-		  (*listenerTime)[e.serverString] = e.ms_from_start;
 		  outEvents[i]->addEvent(e_shr);
 		}
 	    }

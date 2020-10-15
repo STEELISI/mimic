@@ -112,14 +112,11 @@ class FileWorker {
 
 
     public:
-        FileWorker(EventNotifier* loadMoreNotifier, std::unordered_map<long int, long int>* c2time, std::unordered_map<std::string, long int>* l2time, EventQueue** out, EventQueue* accept, std::string& ipFile, std::string& forFile, std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMap=true);
+        FileWorker(EventNotifier* loadMoreNotifier, EventQueue** out, std::string& ipFile, std::string& forFile, std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMap=true);
         ~FileWorker();
         bool startup();
         void loop(std::chrono::high_resolution_clock::time_point startTime);
 	void setStartTime(unsigned long int sTime);
-		
-        ConnectionPairMap connIDToConnectionPairMap; 
-        ConnectionPairMap * getConnectionPairMap();
 };
 
 #endif

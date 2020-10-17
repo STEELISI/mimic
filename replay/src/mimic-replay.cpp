@@ -232,10 +232,8 @@ int main(int argc, char* argv[]) {
       case 'm':
 	makeup = true;
 	forFile = optarg;
-	std::cout<<"Foreign file "<<forFile<<std::endl;
 	break;
       case 's':
-	std::cout<<"This is server\n";
 	isServer = true;
 	break;
       case 'i':
@@ -249,28 +247,23 @@ int main(int argc, char* argv[]) {
 	break;
       case 'c':
 	serverIP = optarg;
+	char ss[MEDLEN];
+	sprintf(ss, "%s:%d", serverIP.c_str(), SRV_PORT);
+	servString = ss;
 	break;
       case 'e':
 	eventFile = optarg;
 	break;
       case '?':
-        if (optopt == 'i' || optopt == 'e' || optopt == 'c' || optopt == 't' || optopt == 'm')
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        if (optopt == 'i' || optopt == 'e' || optopt == 'c' || optopt == 't' || optopt == 'm'
+	    || optopt == 'l' || optopt == 'n' || optopt == 'b' || optopt == 'E')
+	  std::cerr<<"Option "<<optopt<<" requires an argument.\n";
         else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
+	  std::cerr<<"Unknown option -"<<optopt<<std::endl;
         return 1;
       default:
         abort ();
       }
-    
-    char ss[50];
-    sprintf(ss, "%s:%d", serverIP.c_str(), SRV_PORT);
-    servString = ss;
-
     
     if(ipFile == "") {
         std::cerr << "We need an IPFile argument." << std::endl;
@@ -278,7 +271,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(forFile == "" && makeup) {
-        std::cerr << "We need an foreign file argument to make up traffic." << std::endl;
+        std::cerr << "We need a foreign file argument to make up traffic." << std::endl;
         exit(-1);
     }
 
@@ -310,14 +303,12 @@ int main(int argc, char* argv[]) {
     // Start only file worker
     isRunning.store(true);
     std::chrono::high_resolution_clock::time_point fstartPoint = std::chrono::high_resolution_clock::now();
-    /* File worker. */
     std::thread fileWorkerThread(&FileWorker::loop, fw, fstartPoint);
 
     // Wait while initial load is done
     while(isInitd.load() == false)
-      {
 	sleep(1);
-      }
+
     // Check how many file queues are empty and drop that many threads
     int n = numThreads.load();
     for (int i=0;i<numThreads.load();i++)
@@ -327,109 +318,39 @@ int main(int argc, char* argv[]) {
       }
     numThreads.store(n);
     std::cout<<"Final num threads "<<numThreads.load()<<std::endl;
+
+    // Start event handlers
     EventHandler** eh = (EventHandler**)malloc(numThreads.load()*sizeof(EventHandler*));
       
     for (int i=0;i<numThreads.load();i++)
       {
 	sprintf(filename, "thread.%s.%d.txt", myName,i);
-	
 	eh[i] = new EventHandler(loadMoreNotifier, fileQ[i], &connStats, i, DEBUG, filename);
-	
 	eh[i]->startup();
       }
-    //EventHandler* eh2 = new EventHandler(loadMoreNotifier, fileQ2, acceptQ, recvQ, sentQ, serverQ, sendQ, ConnIDtoConnectionPairMap2, &c2eq2);
-    //eh2->startup();
-    
-    //ServerWorker* sw = new ServerWorker(serverQ, acceptQ);
-    //sw->startup(ConnIDtoConnectionPairMap);
-    
-    //isRunning.store(true);    
-    
-    // Start rest of our threads.
-    /* File worker. */
-    //thread fileWorkerThread(&FileWorker::loop, fw, startPoint);
-    //thread fileWorkerThread2(&FileWorker::loop, fw2, startPoint);
-    
-    /* Server Woker. */
-    //thread serverWorkerThread(&ServerWorker::loop, sw, startPoint);                     
-        
-    /* Event Handler. */
+
     std::thread** eventHandlerThread = (std::thread**)malloc(numThreads.load()*sizeof(std::thread*));
 
-    /* We're ready to start, notify the other side */
+    // We're ready to start, notify the other side
+    // and wait until they are ready too
     if (isServer)
       informPeer();
     else
       waitForPeer();
 
+    // Communicate start time to File worker
     std::chrono::high_resolution_clock::time_point startPoint = std::chrono::high_resolution_clock::now();
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     fw->setStartTime(now);
     
     for (int i=0; i<numThreads.load(); i++)
-      {
-	eventHandlerThread[i] = new std::thread(&EventHandler::loop, eh[i], startPoint);
-      }
-    //thread eventHandlerThread2(&EventHandler::loop, eh2, startPoint);
+      eventHandlerThread[i] = new std::thread(&EventHandler::loop, eh[i], startPoint);
 
-    /*
-    fileWorkerThread.join();
-
-    try
-      {
-	for (int i=0; i<numThreads.load(); i++)
-	  eventHandlerThread[i]->join();
-      }
-    catch(exception& e)
-      {
-	std::cout<<"Thread died "<<e.what()<<std::endl;
-      }
-    */
-    /*
-    EventQueue* eq = new EventQueue();
-    thread connThread(connectionHandlerThread,numConns, sendQ);
-    connThread.join();
-    while(true)
-      {
-	sleep(1);
-	print_stats();
-      }
-    exit(0);
-    */
-
+    // Wait forever and keep printing the statistics
     while(true)
       {
 	sleep(1);
 	print_stats(false);
       }
-
-
-
-    // test connection map.
-    /*std::unordered_map<long int, connectionPair*> connIDToConnectionPairMap = {};
-    std::unordered_map<string, long int> stringToConnID = {};
-    connectionPair c = connectionPair("10.1.1.2", 85, "10.1.1.0", 55);
-    connectionPair a = connectionPair("10.1.1.2", 85, "10.1.1.0", 55);
-    
-    if(a==c) {
-        std::cout << "Connection pair a and connection pair c are the same." << std::endl;
-    }
-     
-    bool x=true;
-    
-    connIDToConnectionPairMap[0] = &c;
-    stringToConnID[getConnString(&(c.src), &(c.dst), &x)] = 352;
-
-    std::string str = getConnString(&(c.src), &(c.dst), &x);
-    try {
-        std::cout << "The c conn id is " << stringToConnID.at("bob") << std::endl;
-    }
-    catch(out_of_range) {
-        std::cout << "Caught exception." << std::endl;
-    }
-
-    exit(1);
-
-    */
 }

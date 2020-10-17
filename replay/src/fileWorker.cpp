@@ -545,7 +545,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		if (DEBUG)
 		  (*out)<<"Event for conn "<<e.conn_id<<" event id "<<e.event_id<<" type "<<EventNames[e.type]<<" value "<<e.value<<" time "<<e.ms_from_start<<std::endl;
 
-		(*connTime)[e.conn_id] = e.ms_from_start;
 		shortTermHeap->addEvent(e);
 	      }
 	      double evtime =  std::stod(eventData[i][7].c_str()) * 1000 + loopedCount * loopDuration;

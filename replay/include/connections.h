@@ -49,7 +49,6 @@ struct stats
 typedef std::unordered_map<std::string, long int> stringToConnIDMap;
 std::string getConnString(const struct sockaddr_in* src, const struct sockaddr_in* dst, bool* success);
 std::string getIPPortString(const struct sockaddr_in* sa);
-void getAddrFromString(std::string servString, struct sockaddr_in* addr);
 bool cmpSockAddrIn(const sockaddr_in* a, const sockaddr_in* b);
                             
 

@@ -352,8 +352,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	  (*out)<<"Associated conn "<<dispatchJob.conn_id<<" with "<<dispatchJob.connString<<std::endl;
 	}
     std::string servString = dispatchJob.serverString;
-    struct sockaddr_in addr;
-    getAddrFromString(servString, &addr);
+    struct sockaddr_in addr = getAddressFromString(servString);
     int sockfd = getIPv4TCPSock((const struct sockaddr_in*)&addr);
     if(sockfd == -1) {
       // Couldn't start it

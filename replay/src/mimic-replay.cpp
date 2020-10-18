@@ -119,7 +119,7 @@ void waitForPeer()
     exit(0); 
   } 
 
-  getAddrFromString(servString, &servaddr);
+  servaddr = getAddressFromString(servString);
   
   // connect the client socket to server socket 
   while(connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) { 
@@ -140,8 +140,12 @@ void informPeer()
 
   struct sockaddr cliaddr;
   int in_addr_size = sizeof(cliaddr);
-    
-  getAddrFromString(servString, &servaddr);
+  
+  servString="0.0.0.0:"+std::to_string(SRV_PORT);
+
+  //std::cout<<"Server string "<<servString<<std::endl;
+  
+  servaddr = getAddressFromString(servString);
 
   // Get an ordinary,blocking socket
   int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
@@ -150,7 +154,7 @@ void informPeer()
       exit(0); 
     } 
 
-     servaddr.sin_family = AF_INET;
+    servaddr.sin_family = AF_INET;
     inet_pton(AF_INET, serverIP.c_str(), &(servaddr.sin_addr));
     // assign IP, PORT 
     servaddr.sin_port = htons(SRV_PORT); 
@@ -276,7 +280,7 @@ int main(int argc, char* argv[]) {
       case '?':
         if (optopt == 'i' || optopt == 'e' || optopt == 'c' || optopt == 't' || optopt == 'm'
 	    || optopt == 'l' || optopt == 'n' || optopt == 'b' || optopt == 'E')
-	  std::cerr<<"Option "<<optopt<<" requires an argument.\n";
+	  std::cerr<<"Option -"<<(char)optopt<<" requires an argument.\n";
         else
 	  std::cerr<<"Unknown option -"<<optopt<<std::endl;
         return 1;

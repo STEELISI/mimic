@@ -1,9 +1,27 @@
+/*
+#
+# Copyright (C) 2020 University of Southern California.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License,
+# version 3, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# The details of the GNU General Public License v3 can be found at
+# https://choosealicense.com/licenses/gpl-3.0/
+#
+*/
+
 #include "connections.h"
 #include <sstream>
 #include <sys/types.h>
 #include <sys/socket.h>
 
-
+// Convert address string into sockaddr_in
 struct sockaddr_in getAddressFromString(std::string addrString)
 {
   char c[MEDLEN];
@@ -25,9 +43,9 @@ struct sockaddr_in getAddressFromString(std::string addrString)
   return saddr;
 }
 
-
+// Compare two addresses
 bool cmpSockAddrIn(const sockaddr_in* a, const sockaddr_in* b) {
-    //if (memcmp(a, b, sizeof(struct sockaddr_in)) == 0) return true;        
+  
     if(a->sin_family == b->sin_family) {
         if(ntohl(a->sin_addr.s_addr) == ntohl(b->sin_addr.s_addr)) {
             if(a->sin_port == b->sin_port) {
@@ -38,8 +56,9 @@ bool cmpSockAddrIn(const sockaddr_in* a, const sockaddr_in* b) {
     return false;       
 }
 
+// Convert sockaddr_in into string
 std::string getIPPortString(const struct sockaddr_in* sa) {
-    /* XXX Should use this in getConnString */
+  
     char str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(sa->sin_addr), str, INET_ADDRSTRLEN);
     int port = ntohs(sa->sin_port);
@@ -51,9 +70,9 @@ std::string getIPPortString(const struct sockaddr_in* sa) {
     return stringStream.str();
 }
 
-               
+// Get full connection string - 4 tuple               
 std::string getConnString(const struct sockaddr_in* src, const struct sockaddr_in* dst, bool* success) {
-    /* XXX should set success based off of result. */
+  
     *success = true;
 
     char srcStr[INET_ADDRSTRLEN];
@@ -73,13 +92,10 @@ std::string getConnString(const struct sockaddr_in* src, const struct sockaddr_i
 
     stringStream << srcStr << ":" << sport << "," << dstStr << ":" << dport;
 
-    //if (DEBUG)
-    //cout << "String stream: " << stringStream.str() << endl;
-
     return stringStream.str();
-    return "";
 }
 
+// Set non-blocking attribute on a socket
 int setIPv4TCPNonBlocking(int sockfd) {
     int status = fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK);
     if(status == -1) {
@@ -91,8 +107,9 @@ int setIPv4TCPNonBlocking(int sockfd) {
     return status;
 }
 
+// Create a socket and bind to address/port
 int getIPv4TCPSock(const struct sockaddr_in * sa) {
-    /* Get non-blocking socket. */
+
     int s = socket(AF_INET, SOCK_STREAM, 0);
     if (s == -1)
       {
@@ -120,22 +137,3 @@ int getIPv4TCPSock(const struct sockaddr_in * sa) {
     return s;
 }
 
-#define MS 30
-
-void getAddrFromString(std::string servString, struct sockaddr_in* addr)
-{
-  char s[MS];
-  strcpy(s, servString.c_str());
-  int i;
-  for(i=0; i<strlen(s); i++)
-    {
-      if (s[i] == ':')
-	{
-	  s[i] = 0;
-	  break;
-	}
-    }
-  addr->sin_family = AF_INET;
-  addr->sin_port = htons(atoi(s+i+1));
-  inet_aton(s, &addr->sin_addr);
-}

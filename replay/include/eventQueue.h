@@ -77,10 +77,6 @@ class EventQueue {
 };
 
 
-bool setNonBlocking(int sockfd); 
-int getSocket(DomainType domain, TransportType type, const struct sockaddr *localAddr);
-bool serverUp(int sockfd);
-bool connectToServer(int sockfd);
 
 // EventHeap class
 class EventHeap {

@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
     eFiles.push_back(eventFile);
     
     gethostname(myName, SHORTLEN);
-    sprintf(filename, "file.%s.txt", myName);
+    sprintf(filename, "%s/file.%s.txt", logDir, myName);
     FileWorker* fw = new FileWorker(loadMoreNotifier, fileQ, ipFile, forFile, eFiles,
 				    &connStats, numThreads.load(), DEBUG, filename, true);
     fw->startup();
@@ -340,7 +340,7 @@ int main(int argc, char* argv[]) {
       
     for (int i=0;i<numThreads.load();i++)
       {
-	sprintf(filename, "thread.%s.%d.txt", myName,i);
+	sprintf(filename, "%s/thread.%s.%d.txt", logDir, myName,i);
 	eh[i] = new EventHandler(loadMoreNotifier, fileQ[i], &connStats, i, DEBUG, filename);
 	eh[i]->startup();
       }

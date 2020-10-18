@@ -4,14 +4,6 @@
 #include <sys/socket.h>
 
 
-connectionPair::connectionPair(std::string srcIP, int sport, std::string dstIP, int dport) {
-    src.sin_family = dst.sin_family = AF_INET;                                    
-    inet_pton(AF_INET, srcIP.c_str(), &src.sin_addr);                                                      
-    src.sin_port = htons(sport);                                        
-    inet_pton(AF_INET, dstIP.c_str(), &dst.sin_addr);
-    dst.sin_port = htons(dport);    
-}
-
 struct sockaddr_in getAddressFromString(std::string addrString)
 {
   char c[MEDLEN];
@@ -31,11 +23,6 @@ struct sockaddr_in getAddressFromString(std::string addrString)
   inet_aton(c, &saddr.sin_addr);
   bzero(saddr.sin_zero, 8);
   return saddr;
-}
-
-bool connectionPair::operator==(const connectionPair a) const {                                      
-    if((cmpSockAddrIn(&src, &(a.src))) && (cmpSockAddrIn(&dst, &(a.dst)))) return true;
-    return false;       
 }
 
 

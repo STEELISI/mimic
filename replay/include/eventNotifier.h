@@ -35,7 +35,6 @@ class EventNotifier {
       std::string myName;
       EventNotifier(int myfd, std::string name="");
       ~EventNotifier();
-      bool isMe(int readfd);
       int myFD();
       bool sendSignal();
       bool readSignal();

@@ -143,8 +143,6 @@ void informPeer()
   
   servString="0.0.0.0:"+std::to_string(SRV_PORT);
 
-  //std::cout<<"Server string "<<servString<<std::endl;
-  
   servaddr = getAddressFromString(servString);
 
   // Get an ordinary,blocking socket
@@ -153,11 +151,6 @@ void informPeer()
       std::cerr<<"socket creation failed...\n";
       exit(0); 
     } 
-
-    servaddr.sin_family = AF_INET;
-    inet_pton(AF_INET, serverIP.c_str(), &(servaddr.sin_addr));
-    // assign IP, PORT 
-    servaddr.sin_port = htons(SRV_PORT); 
 
     int optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));

@@ -29,7 +29,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "mimic.h"
 #include "eventQueue.h"
 #include "eventHandler.h"
 #include "fileWorker.h"

@@ -11,7 +11,6 @@
 #include <fstream> 
 #include <unordered_map>
 #include "eventQueue.h"
-#include "mimic.h"
 
 
 int compareEvents::operator()(const Event& e1, const Event& e2) {

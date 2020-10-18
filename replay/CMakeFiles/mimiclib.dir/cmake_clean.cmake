@@ -3,7 +3,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o"
   "CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o"
   "CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o"
-  "CMakeFiles/mimiclib.dir/src/mimic.cpp.o"
+  "CMakeFiles/mimiclib.dir/src/utils.cpp.o"
   "CMakeFiles/mimiclib.dir/src/connections.cpp.o"
   "CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o"
   "libmimiclib.pdb"

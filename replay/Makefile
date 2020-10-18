@@ -298,33 +298,6 @@ src/mimic-replay.cpp.s:
 	$(MAKE) -f CMakeFiles/mimic-replay.dir/build.make CMakeFiles/mimic-replay.dir/src/mimic-replay.cpp.s
 .PHONY : src/mimic-replay.cpp.s
 
-src/mimic.o: src/mimic.cpp.o
-
-.PHONY : src/mimic.o
-
-# target to build an object file
-src/mimic.cpp.o:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/mimic.cpp.o
-.PHONY : src/mimic.cpp.o
-
-src/mimic.i: src/mimic.cpp.i
-
-.PHONY : src/mimic.i
-
-# target to preprocess a source file
-src/mimic.cpp.i:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/mimic.cpp.i
-.PHONY : src/mimic.cpp.i
-
-src/mimic.s: src/mimic.cpp.s
-
-.PHONY : src/mimic.s
-
-# target to generate assembly for a file
-src/mimic.cpp.s:
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/mimic.cpp.s
-.PHONY : src/mimic.cpp.s
-
 src/pollHandler.o: src/pollHandler.cpp.o
 
 .PHONY : src/pollHandler.o
@@ -351,6 +324,33 @@ src/pollHandler.s: src/pollHandler.cpp.s
 src/pollHandler.cpp.s:
 	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/pollHandler.cpp.s
 .PHONY : src/pollHandler.cpp.s
+
+src/utils.o: src/utils.cpp.o
+
+.PHONY : src/utils.o
+
+# target to build an object file
+src/utils.cpp.o:
+	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/utils.cpp.o
+.PHONY : src/utils.cpp.o
+
+src/utils.i: src/utils.cpp.i
+
+.PHONY : src/utils.i
+
+# target to preprocess a source file
+src/utils.cpp.i:
+	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/utils.cpp.i
+.PHONY : src/utils.cpp.i
+
+src/utils.s: src/utils.cpp.s
+
+.PHONY : src/utils.s
+
+# target to generate assembly for a file
+src/utils.cpp.s:
+	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/utils.cpp.s
+.PHONY : src/utils.cpp.s
 
 # Help Target
 help:
@@ -380,12 +380,12 @@ help:
 	@echo "... src/mimic-replay.o"
 	@echo "... src/mimic-replay.i"
 	@echo "... src/mimic-replay.s"
-	@echo "... src/mimic.o"
-	@echo "... src/mimic.i"
-	@echo "... src/mimic.s"
 	@echo "... src/pollHandler.o"
 	@echo "... src/pollHandler.i"
 	@echo "... src/pollHandler.s"
+	@echo "... src/utils.o"
+	@echo "... src/utils.i"
+	@echo "... src/utils.s"
 .PHONY : help
 
 

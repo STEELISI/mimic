@@ -44,7 +44,7 @@
 #include "eventNotifier.h"
 #include "pollHandler.h"
 #include "eventQueue.h"
-#include "mimic.h"
+#include "utils.h"
 
 
 class FileWorker {

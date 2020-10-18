@@ -4,39 +4,39 @@
 CMakeFiles/mimiclib.dir/src/connections.cpp.o
  /users/sunshine/mimic/replay/src/connections.cpp
  include/connections.h
- include/mimic.h
+ include/utils.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o
  /users/sunshine/mimic/replay/src/eventHandler.cpp
  include/connections.h
  include/eventHandler.h
  include/eventNotifier.h
  include/eventQueue.h
- include/mimic.h
  include/pollHandler.h
+ include/utils.h
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o
  /users/sunshine/mimic/replay/src/eventNotifier.cpp
  include/connections.h
  include/eventNotifier.h
- include/mimic.h
+ include/utils.h
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o
  /users/sunshine/mimic/replay/src/eventQueue.cpp
  include/connections.h
  include/eventQueue.h
- include/mimic.h
+ include/utils.h
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o
  /users/sunshine/mimic/replay/src/fileWorker.cpp
  include/connections.h
  include/eventNotifier.h
  include/eventQueue.h
  include/fileWorker.h
- include/mimic.h
  include/pollHandler.h
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o
- /users/sunshine/mimic/replay/src/mimic.cpp
- include/connections.h
- include/mimic.h
+ include/utils.h
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o
  /users/sunshine/mimic/replay/src/pollHandler.cpp
  include/connections.h
- include/mimic.h
  include/pollHandler.h
+ include/utils.h
+CMakeFiles/mimiclib.dir/src/utils.cpp.o
+ /users/sunshine/mimic/replay/src/utils.cpp
+ include/connections.h
+ include/utils.h

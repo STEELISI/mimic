@@ -22,7 +22,7 @@
 #ifndef CONNECTIONS_H
 #define CONNECTIONS_H
 
-#include "mimic.h"
+#include "utils.h"
 #include <list>
 
 

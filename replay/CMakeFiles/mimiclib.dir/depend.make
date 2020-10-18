@@ -3,40 +3,40 @@
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: src/connections.cpp
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: include/connections.h
-CMakeFiles/mimiclib.dir/src/connections.cpp.o: include/mimic.h
+CMakeFiles/mimiclib.dir/src/connections.cpp.o: include/utils.h
 
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: src/eventHandler.cpp
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/eventHandler.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/eventNotifier.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/eventQueue.h
-CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/mimic.h
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/pollHandler.h
+CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o: include/utils.h
 
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: src/eventNotifier.cpp
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: include/eventNotifier.h
-CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: include/mimic.h
+CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o: include/utils.h
 
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: src/eventQueue.cpp
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: include/eventQueue.h
-CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: include/mimic.h
+CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o: include/utils.h
 
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: src/fileWorker.cpp
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/connections.h
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/eventNotifier.h
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/eventQueue.h
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/fileWorker.h
-CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/mimic.h
 CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/pollHandler.h
-
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o: src/mimic.cpp
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o: include/connections.h
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o: include/mimic.h
+CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o: include/utils.h
 
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: src/pollHandler.cpp
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: include/connections.h
-CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: include/mimic.h
 CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: include/pollHandler.h
+CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o: include/utils.h
+
+CMakeFiles/mimiclib.dir/src/utils.cpp.o: src/utils.cpp
+CMakeFiles/mimiclib.dir/src/utils.cpp.o: include/connections.h
+CMakeFiles/mimiclib.dir/src/utils.cpp.o: include/utils.h
 

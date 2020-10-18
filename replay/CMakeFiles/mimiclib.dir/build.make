@@ -153,28 +153,28 @@ CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.provides: CMakeFiles/mimiclib.dir
 CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.provides.build: CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o
 
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o: CMakeFiles/mimiclib.dir/flags.make
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o: src/mimic.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/mimiclib.dir/src/mimic.cpp.o"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/mimic.cpp.o -c /users/sunshine/mimic/replay/src/mimic.cpp
+CMakeFiles/mimiclib.dir/src/utils.cpp.o: CMakeFiles/mimiclib.dir/flags.make
+CMakeFiles/mimiclib.dir/src/utils.cpp.o: src/utils.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/users/sunshine/mimic/replay/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/mimiclib.dir/src/utils.cpp.o"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/mimiclib.dir/src/utils.cpp.o -c /users/sunshine/mimic/replay/src/utils.cpp
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/mimic.cpp.i"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/mimic.cpp > CMakeFiles/mimiclib.dir/src/mimic.cpp.i
+CMakeFiles/mimiclib.dir/src/utils.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/mimiclib.dir/src/utils.cpp.i"
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /users/sunshine/mimic/replay/src/utils.cpp > CMakeFiles/mimiclib.dir/src/utils.cpp.i
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/mimic.cpp.s"
-	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/mimic.cpp -o CMakeFiles/mimiclib.dir/src/mimic.cpp.s
+CMakeFiles/mimiclib.dir/src/utils.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/mimiclib.dir/src/utils.cpp.s"
+	/usr/bin/clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /users/sunshine/mimic/replay/src/utils.cpp -o CMakeFiles/mimiclib.dir/src/utils.cpp.s
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires:
+CMakeFiles/mimiclib.dir/src/utils.cpp.o.requires:
 
-.PHONY : CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires
+.PHONY : CMakeFiles/mimiclib.dir/src/utils.cpp.o.requires
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o.provides: CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires
-	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/mimic.cpp.o.provides.build
-.PHONY : CMakeFiles/mimiclib.dir/src/mimic.cpp.o.provides
+CMakeFiles/mimiclib.dir/src/utils.cpp.o.provides: CMakeFiles/mimiclib.dir/src/utils.cpp.o.requires
+	$(MAKE) -f CMakeFiles/mimiclib.dir/build.make CMakeFiles/mimiclib.dir/src/utils.cpp.o.provides.build
+.PHONY : CMakeFiles/mimiclib.dir/src/utils.cpp.o.provides
 
-CMakeFiles/mimiclib.dir/src/mimic.cpp.o.provides.build: CMakeFiles/mimiclib.dir/src/mimic.cpp.o
+CMakeFiles/mimiclib.dir/src/utils.cpp.o.provides.build: CMakeFiles/mimiclib.dir/src/utils.cpp.o
 
 
 CMakeFiles/mimiclib.dir/src/connections.cpp.o: CMakeFiles/mimiclib.dir/flags.make
@@ -231,7 +231,7 @@ mimiclib_OBJECTS = \
 "CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o" \
-"CMakeFiles/mimiclib.dir/src/mimic.cpp.o" \
+"CMakeFiles/mimiclib.dir/src/utils.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/connections.cpp.o" \
 "CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o"
 
@@ -242,7 +242,7 @@ libmimiclib.a: CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o
-libmimiclib.a: CMakeFiles/mimiclib.dir/src/mimic.cpp.o
+libmimiclib.a: CMakeFiles/mimiclib.dir/src/utils.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/connections.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o
 libmimiclib.a: CMakeFiles/mimiclib.dir/build.make
@@ -260,7 +260,7 @@ CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/pollHandler.cpp.o.
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventNotifier.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventQueue.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/eventHandler.cpp.o.requires
-CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/mimic.cpp.o.requires
+CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/utils.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/connections.cpp.o.requires
 CMakeFiles/mimiclib.dir/requires: CMakeFiles/mimiclib.dir/src/fileWorker.cpp.o.requires
 

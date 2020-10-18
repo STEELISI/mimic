@@ -63,8 +63,6 @@ unordered_map
 -
 eventQueue.h
 /users/sunshine/mimic/replay/src/eventQueue.h
-mimic.h
-/users/sunshine/mimic/replay/src/mimic.h
 
 /users/sunshine/mimic/replay/src/fileWorker.cpp
 connections.h
@@ -73,20 +71,18 @@ eventQueue.h
 /users/sunshine/mimic/replay/src/eventQueue.h
 fileWorker.h
 /users/sunshine/mimic/replay/src/fileWorker.h
-mimic.h
-/users/sunshine/mimic/replay/src/mimic.h
-
-/users/sunshine/mimic/replay/src/mimic.cpp
-mimic.h
-/users/sunshine/mimic/replay/src/mimic.h
 
 /users/sunshine/mimic/replay/src/pollHandler.cpp
 pollHandler.h
 /users/sunshine/mimic/replay/src/pollHandler.h
 
+/users/sunshine/mimic/replay/src/utils.cpp
+utils.h
+/users/sunshine/mimic/replay/src/utils.h
+
 include/connections.h
-mimic.h
-include/mimic.h
+utils.h
+include/utils.h
 list
 -
 
@@ -123,16 +119,16 @@ eventNotifier.h
 include/eventNotifier.h
 pollHandler.h
 include/pollHandler.h
-mimic.h
-include/mimic.h
+utils.h
+include/utils.h
 
 include/eventNotifier.h
 unistd.h
 -
 sys/eventfd.h
 -
-mimic.h
-include/mimic.h
+utils.h
+include/utils.h
 
 include/eventQueue.h
 stdlib.h
@@ -157,8 +153,8 @@ queue
 -
 unordered_map
 -
-mimic.h
-include/mimic.h
+utils.h
+include/utils.h
 
 include/fileWorker.h
 stdlib.h
@@ -209,10 +205,18 @@ pollHandler.h
 include/pollHandler.h
 eventQueue.h
 include/eventQueue.h
-mimic.h
-include/mimic.h
+utils.h
+include/utils.h
 
-include/mimic.h
+include/pollHandler.h
+unistd.h
+-
+set
+-
+utils.h
+include/utils.h
+
+include/utils.h
 ctime
 -
 netinet/in.h
@@ -241,12 +245,4 @@ condition_variable
 -
 connections.h
 include/connections.h
-
-include/pollHandler.h
-unistd.h
--
-set
--
-mimic.h
-include/mimic.h
 

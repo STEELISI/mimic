@@ -1,7 +1,6 @@
 #include "connections.h"
 #include "eventQueue.h"
 #include "fileWorker.h"
-#include "mimic.h"
 
 
 FileWorker::FileWorker(EventNotifier* loadMoreNotifier, EventQueue** outQ, std::string& ipFile, std::string& forFile,  std::vector<std::string>& eFiles, std::map<long int, struct stats>* cs, int nt, bool debug, std::string myname, bool useMMapFlag) {
@@ -579,32 +578,6 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	  }
       }
     
-    // Now go through times when server should end and add those
-    /*
-    for(auto it = listenerTime->begin(); it != listenerTime->end();)
-      {
-	if (it->second < lastEventTime - SRV_GAP)
-	  {
-	    Event e;
-	    e.serverString = it->first;
-	    e.conn_id = -1;
-	    e.event_id = -1;
-	    e.value = -1;
-	    e.ms_from_start = it->second + 2*SRV_UPSTART;
-	    e.ms_from_last_event = 0;
-	    e.type = SRV_END;
-	    shortTermHeap->addEvent(e);
-	    auto dit = it;
-	    it++;
-	    listenerTime->erase(dit);
-	    //if (e.ms_from_start > lastEventTime)
-	    //lastEventTime = e.ms_from_start;
-	    if (DEBUG)
-	      (*out)<<"Created srv end job for "<<e.serverString<<" at time "<<e.ms_from_start<<std::endl;
-	  }
-	else
-	  it++;
-	  }*/
     if (DEBUG)
       (*out) << "Loaded " << eventsProduced << " events from file"<<std::endl;
     //shortTermHeap->print();

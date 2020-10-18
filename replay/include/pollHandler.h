@@ -24,7 +24,7 @@
 
 #include <unistd.h>
 #include <set>
-#include "mimic.h"
+#include "utils.h"
 
 // Should be a relatively large number
 #define MAX_EPOLL_EVENTS 1000

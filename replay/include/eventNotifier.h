@@ -23,7 +23,7 @@
 
 #include <unistd.h>
 #include <sys/eventfd.h>
-#include "mimic.h"
+#include "utils.h"
 
 int createEventFD();
 

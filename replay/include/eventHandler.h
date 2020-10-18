@@ -35,7 +35,7 @@
 #include "eventQueue.h"
 #include "eventNotifier.h"
 #include "pollHandler.h"
-#include "mimic.h"
+#include "utils.h"
 
 // Data we store about connections
 struct connData

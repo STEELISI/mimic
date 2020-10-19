@@ -108,7 +108,7 @@ Assume there are two machines we will be using for replay, with IP addresses
 
 1. Process file testing/202010011400.10K.pcap as follows
 
-    mimic-extract -s 10.1.1.2 -c 10.1.1.3 testing/202010011400.10K.pcap > testing/202010011400.10K.rew.csv
+     mimic-extract -s 10.1.1.2 -c 10.1.1.3 testing/202010011400.10K.pcap > testing/202010011400.10K.rew.csv
 
 2. Copy the file 202010011400.10K.rew.csv to both machines
 

@@ -85,6 +85,8 @@ utils.h
 include/utils.h
 list
 -
+string
+-
 
 include/eventHandler.h
 stdlib.h

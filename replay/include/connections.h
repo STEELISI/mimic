@@ -24,12 +24,14 @@
 
 #include "utils.h"
 #include <list>
+#include <string>
 
 
 // Each connection goes through these states
 // INIT - LISTENING - EST - DONE or
 // INIT - CONNECTING - EST - DONE
 enum conn_state {INIT, LISTENING, CONNECTING, EST, DONE};
+static std::string csNames [] = {"INIT", "LISTENING", "CONNECTING", "ESTABLISHED", "DONE"};
 
 // We remeber these statistics per connection
 struct stats

@@ -40,7 +40,7 @@
 // Some global flags and constants
 std::atomic<bool> isRunning = false;
 std::atomic<bool> isInitd = false;
-std::atomic<int> numThreads = 1;
+std::atomic<int> numThreads = 5;
 std::atomic<int> numconns = 1;
 std::atomic<int> numbytes = 100;
 std::atomic<int> numevents = 1;
@@ -78,13 +78,15 @@ void print_stats(int flag)
     {
       total++;
       if (flag)
-	myfile<<"Conn "<<it->first<<" state "<<it->second.state<<" total events "<<it->second.total_events<<" last event "<<it->second.last_completed<<" delay "<<it->second.delay/1000<<"s started "<<it->second.started/1000<<" completed "<<it->second.completed/1000<<std::endl;
+	myfile<<"Conn "<<it->first<<" state "<<csNames[it->second.state]<<" total events "<<it->second.total_events<<" last event "<<it->second.last_completed<<" delay "<<it->second.delay/1000.0<<" s, started "<<it->second.started/1000.0<<" completed "<<it->second.completed/1000.0<<std::endl;
       if (it->second.state == DONE)
 	{
 	  completed++;
 	  delay += it->second.delay;
 	}
     }
+  if (completed == 0)
+    completed = 1;
   double avgd = (double)delay/completed;
   long int t, e;
   statsMTX.lock();

@@ -5,6 +5,13 @@ a congestion-responsive manner. The current version of the tool makes several as
 * replay occurs between two peers
 * each host owns IP addresses that are listed in its IPfile (cmdline arg)
 
+We shift all the traffic by 10 seconds during extract, so replay should start roughly
+10 seconds after you start the code. This is controled by parameter SHIFT in ../extract/mimic-extract.cc
+for event file replay and by variable my_time in src/fileWorker.cc for made-up traffic replay.
+
+** Note: you should run mimic-replay with sudo privileges since the replayed traffic
+likely uses privileged port numbers **
+
 ## Usage
 
     mimic-replay syncConfig replayConfig IPConfig [options]
@@ -15,7 +22,9 @@ Mimic-replay first reads events from file or makes up a sequence of events
 and then two peers synchronize. One peer is started a server and waits for
 the client to contact it. After that replay starts on both peers. During
 replay they try to loosely synchronize and ensure that one is not much
-faster than the other
+faster than the other.
+
+The cmdline args below set up synchronization parameters:
 
     syncConfig: -s | -c serverIP
      -s              this is the server, wait for connection to sync
@@ -23,80 +32,122 @@ faster than the other
 
 ### Replay from event file
 
-replayConfig: -e eventFile | -m peerIPFile [-n numConns][-E numEvents][-b numBytes]
-   -e eventFile    file with events to be replayed, usually obtained from mimic-extract
-   -m peerIPFile   make up traffic to generate, using myIPFile and peerIPFile
-   -n numConns     make up numConns parallel connections
-   -E numEvents    make up numEvents sends per connection
-   -b numBytes     each made-up send is numBytes large
+Mimic-replay assumes that event file is obtained by running mimic-extract
+on a pcap file to extract TCP flow information. The flow format described
+in [this document](../README.md). It is also possible to write a small program
+to generate flows in the given format, with any desired dynamics. Care should
+be taken that each flow balances SEND and WAIT events, i.e., that for each peer in
+the flow the sum of bytes in SEND statements is equal to the sum of bytes in
+WAIT statements of the other peer. Both peers must also have CLOSE statements
+as the last statement on the flow. If flows are constructed that deviate from
+these requirements replay will eventually stall.
 
-IPConfig: -i IPFile
-   -i myIPFile     file that specifies IPs on this machine, one per line
+The cmdline args below set up event replay parameters:
 
-Options: [-h][-d][-t numThreads][-l logDir]
-   -h              print this help message
-   -d              turn on debug messages
-   -t numThreads   use up to this number of threads
-   -l logDir       if DEBUG flag is on, save output in this log directory
+    replayConfig: -e eventFile 
+     -e eventFile    file with events to be replayed, usually obtained from mimic-extract
 
+### Made-up replay
 
+Mimic-replay can also make up traffic as it goes. This process is controlled by three
+arguments: the number of parallel connections (numConns), the number of bytes per SEND
+(numBytes), and the number of events per connection (numEvents). Assume two peers
+replaying traffic are A and B. Each event looks like this:
+  A sends numBytes to B
+  B waits for numBytes
+  B sends numBytes to A
+  A waits for numBytes
 
-Mimic-replay the flow format described in [this document](../README.md).
-The tool infers SEND and WAIT events from the dynamics of sequence and acknowledgment
-numbers in the packets exchanged between peers. This inference is best-effort since
-we lack information as to the ground truth of each application's behavior.
+The cmdline args below control made-up traffic replay
 
-## Made-up traffic replay
-## Event Inferrence Process
+    replayConfig: -m peerIPFile [-n numConns][-E numEvents][-b numBytes]
+     -m peerIPFile   generate make up traffic between the first IP in myIPFile and in peerIPFile
+     -n numConns     make up numConns parallel connections
+     -E numEvents    make up numEvents sends per connection
+     -b numBytes     each made-up send is numBytes large
 
-Each payload-bearing packet results in a SEND event. As optimization, multiple,
-consecutive and closeby SEND events can be aggregated into one. This can speed
-up the replay. Aggregation is enabled by
-command-line flag -a followed by a parameter that defines how close SEND events need
-to be for aggregation.
+### IP arguments
 
-Packet that do not carry payload can result in a WAIT event, if they are acknowledging
-data not previously acknowledged.
+IP file is currently the required argument for mimic-replay. It lists all IPs assigned to
+the given peer. 
 
-In real traces many flows are unidirectional, because the collection point does not fully
-observe traffic the other direction. Mimic-extract infers the dynamics of the unobserved
-direction from the dynamics of the observed one (e.g., infers what was sent from the
-acknowledgment data).
+    IPConfig: -i IPFile
+     -i myIPFile     file that specifies IPs on this machine, one per line
 
-To save resources we only extract payload-bearing flows.
+### Other options
 
-When a flow is idle for DELTHRESH seconds (constant in the code, set to 600) we close it,
-and will reopen it if the data starts flowing again.
+Here are other options supported by mimic-replay
+    Options: [-h][-d][-t numThreads][-l logDir]
+     -h              print this help message
+     -d              turn on debug messages
+     -t numThreads   use up to this number of threads
+     -l logDir       if DEBUG flag is on, save output in this log directory
 
-## Usage
+Debug messages are very verbose and will slow down replay by at least 3-4 times.
+The messages go into logDir. FileWorker messages are stored in file.<hostname>
+and EventHandler messages are stored in thread.<hostname>.<threadnum>.
 
-    mimic-extract [-c oneIP -s otherIP] [-a GAP] [-h] pcapfile
+You can set the number of threads to use to replay traffic. Default is 5, which
+gave us best results. You can experiment with a bit higher or lower values. If you
+go past 50, replay usually slows down a lot, and most time is spent on thread
+switching.
 
-In the absence of -c and -s flags, original ports and IPs will be mined.
-Otherwise, IPs will be overwritten with the IPs	you have specified
-and duplicate client ports will be replaced by random other client ports.
-This process is deterministic, so running the code on two different
-machines will produce identical outputs. 
+### Output
 
-Additionally, if there are any ports on replay machines that are
-reserved (e.g., 22), you can specify them in ports.csv file and they will be 
-automatically replaced.
-
-Flag -h prints the help message.
-
-Flag -a followed by GAP, which is a number in decimal notation, denotes that consecutive
-SEND events by the same IP within time GAP should be aggregated into one.
+As code runs, it will print out the total throughput (sent+recvd bytes) and
+total number of events processed each second. It also prints average
+delay per event (compared to the time when this event was planned to occur).
+Once you kill the program, it will also print out each connection's statistics,
+such as when it started, when it completed, what was its final state and
+its cumulative delay.
 
 ## Testing
 
-File 202010011400.10K.pcap contains the first 10K TCP packets from MAWI samplepoint-F trace
-provided by the WIDE project at: https://mawi.wide.ad.jp/mawi/samplepoint-F/2020/202010011400.html
+Assume there are two machines we will be using for replay, with IP addresses
+10.1.1.2 (machine a) and 10.1.1.3 (machine b)
 
-Run
+1. Process file ../extract/202010011400.10K.pcap as follows
 
-    mimic-extract 202010011400.10K.pcap
+    mimic-extract -s 10.1.1.2 -c 10.1.1.3 202010011400.10K.pcap > 202010011400.10K.csv
 
-The output should be identical to 202010011400.10K.csv
+2. Copy the file 202010011400.10K.csv to both machines
+
+3. On A run
+
+   echo "10.1.1.2" > a.ips
+
+4. On B run
+
+   echo "10.1.1.3" > b.ips
+
+5. On A machine run:
+
+    sudo mimic-replay -c 10.1.1.3 -i a.ips -e 202010011400.10K.csv 
+
+6. On B machine run:
+
+    sudo ./mimic-replay -s -i b.ips -e 202010011400.10K.csv
+
+Output should look like this:
+
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 1235
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 0
+    Successfully completed 0/704 avg delay 0 ms, throughput 0 Gbps, events 14
+    Successfully completed 2/704 avg delay 0.5 ms, throughput 0.0319403 Gbps, events 2932
+    Successfully completed 704/704 avg delay 1.52699 ms, throughput 0 Gbps, events 866
+
+Connection statistics look like this:
+
+    Conn 0 state DONE total events 3 last event 2 delay 0.001 s, started 10 completed 11.31
+    Conn 2 state DONE total events 3 last event 2 delay 0.002 s, started 10.001 completed 11.292
+    Conn 4 state DONE total events 3 last event 2 delay 0.003 s, started 10.001 completed 11.007
+   
 
 
 

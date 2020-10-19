@@ -1,3 +1,5 @@
+#!/bin/bash
+
 sudo echo "*         hard    nofile      500000
 *         soft    nofile      500000
 root      hard    nofile      500000

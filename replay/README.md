@@ -12,6 +12,10 @@ for event file replay and by variable my_time in src/fileWorker.cc for made-up t
 ** Note: you should run mimic-replay with sudo privileges since the replayed traffic
 likely uses privileged port numbers **
 
+## Optimization
+
+To optimize machines for running mimic-replay run replay/unlimit.sh.
+
 ## Usage
 
     mimic-replay syncConfig replayConfig IPConfig [options]

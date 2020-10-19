@@ -10,6 +10,19 @@ using TCP sockets. Mimic-replay can also "make up" traffic based on configuratio
 Extraction tool requires libtrace, which can be installed from
 https://github.com/LibtraceTeam/libtrace.
 
+## Building
+
+Run
+    cmake build .
+    make
+    sudo make install
+
+If you don't have cmake you can install it by running
+
+   cmake-install.sh
+
+in the top directory
+   
 ## Flow format
 
 A flow in mimic is represented as one CONN event (start of the flow), multiple SEND/WAIT

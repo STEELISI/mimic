@@ -116,17 +116,17 @@ On A run
 
     echo "10.1.1.2" > a.ips
 
-4. On B run
+On B run
 
     echo "10.1.1.3" > b.ips
 
-5. On A machine run:
+On A run:
 
     sudo mimic-replay -c 10.1.1.3 -i a.ips -e 202010011400.10K.rew.csv 
 
-6. On B machine run:
+On B run:
 
-     sudo mimic-replay -s -i b.ips -e 202010011400.10K.rew.csv
+    sudo mimic-replay -s -i b.ips -e 202010011400.10K.rew.csv
 
 Output should look like this:
 

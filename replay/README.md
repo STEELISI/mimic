@@ -106,15 +106,15 @@ its cumulative delay.
 Assume there are two machines we will be using for replay, with IP addresses
 10.1.1.2 (machine a) and 10.1.1.3 (machine b)
 
-* Process file testing/202010011400.10K.pcap as follows
+* Process file testing/202010011400.10K.pcap as follows:
 
     mimic-extract -s 10.1.1.2 -c 10.1.1.3 testing/202010011400.10K.pcap > testing/202010011400.10K.rew.csv
 
 * Copy the file 202010011400.10K.rew.csv to both machines
 
-3. On A run
+* On A run
 
-   echo "10.1.1.2" > a.ips
+    echo "10.1.1.2" > a.ips
 
 4. On B run
 
@@ -122,7 +122,7 @@ Assume there are two machines we will be using for replay, with IP addresses
 
 5. On A machine run:
 
-     sudo mimic-replay -c 10.1.1.3 -i a.ips -e 202010011400.10K.rew.csv 
+    sudo mimic-replay -c 10.1.1.3 -i a.ips -e 202010011400.10K.rew.csv 
 
 6. On B machine run:
 

@@ -55,9 +55,9 @@ provided by the WIDE project at: https://mawi.wide.ad.jp/mawi/samplepoint-F/2020
 
 Run
 
-    mimic-extract 202010011400.10K.pcap
+    mimic-extract testing/202010011400.10K.pcap
 
-The output should be identical to 202010011400.10K.csv
+The output should be identical to testing/202010011400.10K.csv
 
 
 

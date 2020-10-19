@@ -1,1 +1,0 @@
-/usr/bin/clang++  -Wall -g -O2 --std=gnu++2a --stdlib=libc++ -DASIO_STANDALONE  -rdynamic CMakeFiles/mimic.dir/src/main.cpp.o  -o mimic -lpthread libmimiclib.a 

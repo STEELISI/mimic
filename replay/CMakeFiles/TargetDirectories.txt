@@ -1,4 +1,0 @@
-/users/sunshine/mimic/replay/CMakeFiles/rebuild_cache.dir
-/users/sunshine/mimic/replay/CMakeFiles/mimiclib.dir
-/users/sunshine/mimic/replay/CMakeFiles/edit_cache.dir
-/users/sunshine/mimic/replay/CMakeFiles/mimic-replay.dir

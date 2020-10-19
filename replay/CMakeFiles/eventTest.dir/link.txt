@@ -1,1 +1,0 @@
-/usr/bin/clang++  -Wall -g --std=gnu++2a --stdlib=libc++ -DASIO_STANDALONE  -rdynamic CMakeFiles/eventTest.dir/src/eventTest.cpp.o  -o eventTest -lpthread libmimiclib.a 

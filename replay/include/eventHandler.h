@@ -45,6 +45,7 @@ struct connData
   long int waitingToRecv = 0;
   long int waitingToSend = 0;
   long int delay = 0;
+  long int samples = 0;
   long int lastPlannedEvent = 0;
   long int origStart = 0;
   long int origTime = 0;

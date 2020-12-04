@@ -29,7 +29,7 @@
 
 // Max length of a message
 // We can send more than this but we'll do it in chunks
-#define MAXLEN 100000
+#define MAXLEN 1000000
 // How many file events we process in one loop cycle
 #define CHUNK 1000
 
@@ -49,11 +49,9 @@ void EventHandler::newConnectionUpdate(int sockfd, long int conn_id, long int pl
     {
       // Calculate how far we are from planned timing
       int delay = (now - myConns[conn_id].lastPlannedEvent);
-      if (delay > myConns[conn_id].delay)
-	{
-	  myConns[conn_id].delay = delay;	  
-	  (*connStats)[conn_id].delay = myConns[conn_id].delay;
-	}
+      myConns[conn_id].delay += delay;
+      myConns[conn_id].samples ++;
+      (*connStats)[conn_id].delay = myConns[conn_id].delay/myConns[conn_id].samples;
       myConns[conn_id].lastPlannedEvent = now;
     }
   if (DEBUG)
@@ -874,10 +872,13 @@ long int EventHandler::getNewEvents(long int conn_id)
     myConns[conn_id].stalled = false;
   else 
     myConns[conn_id].stalled = true;
-  
+
+  bool started = false;
+  Event pjob;
   while (nextEventTime >= 0)
     {
       Event job = e->nextEvent();
+      
       // Keep adding until we find a SEND after RECV. In that case we have to return the SEND to the queue.
       if (job.type == SEND && myConns[conn_id].waitingToRecv > 0)
 	{

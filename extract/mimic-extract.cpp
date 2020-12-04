@@ -469,6 +469,9 @@ bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t 
   flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq-payload_size;
   flowmap[fid].dst_lastseq = ack;
   flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
+  flowmap[fid].src_lastack = ack;
+  flowmap[fid].dst_lastack = seq - payload_size;
+
   if (src_port >= dst_port)
     {
       if (!orig)
@@ -648,7 +651,7 @@ void processPacket(libtrace_packet_t *packet) {
 
     // Seq and ack number
     uint32_t seq = ntohl(tcp->seq)+payload_size;
-    uint32_t ack = ntohl(tcp->ack_seq);
+    uint32_t ack = ntohl(tcp->ack_seq) - 1;
 
     // A new flow
     if (flowmap.find(did)==flowmap.end() && flowmap.find(rid)==flowmap.end())
@@ -705,11 +708,14 @@ void processPacket(libtrace_packet_t *packet) {
 				   tcp->syn, tcp->fin, payload_size);
 	last_ack_ts = flowmap[fid].src_ack_ts;
 	
-	// If this is not a hardware duplicate 
+	// If this is not a hardware duplicate
 	if (duplicate < 2 && ack > flowmap[fid].src_ack)
 	  {
 	    if (payload_size == 0)
-	      flowmap[fid].src_lastack = ack;
+	      {
+		acked = ack - flowmap[fid].src_lastack;
+		flowmap[fid].src_lastack = ack;
+	      }
 	    flowmap[fid].src_ack = ack;
 	    flowmap[fid].src_ack_ts = ts;
 	    handleState(fid, tcp);
@@ -717,14 +723,18 @@ void processPacket(libtrace_packet_t *packet) {
       }
     else
       {
+	duplicate = checkDuplicate(fid, 0, dst, src, seq-payload_size, seq, ack, id, ts,
+				   tcp->syn, tcp->fin, payload_size);
 	
 	last_ack_ts = flowmap[fid].dst_ack_ts;
-	
 	// If this is not a hardware duplicate 
 	if (duplicate < 2 && ack > flowmap[fid].dst_ack)
 	  {
 	    if (payload_size == 0)
-	      flowmap[fid].dst_lastack = ack;
+	      {
+		acked = ack - flowmap[fid].dst_lastack;
+		flowmap[fid].dst_lastack = ack;
+	      }
 	    flowmap[fid].dst_ack = ack;
 	    flowmap[fid].dst_ack_ts = ts;
 	    handleState(fid, tcp);
@@ -736,8 +746,8 @@ void processPacket(libtrace_packet_t *packet) {
     // But we will generate an event if this was just an ack because that denotes that one party
     // had no data to send 
     if(!duplicate) {		
-      // Generate an event 
-      double wait = ts - last_ack_ts;
+      // Generate an event
+      double wait = ts - last_ack_ts;      
       if (last_ack_ts == 0)
 	wait = 0;
 
@@ -785,6 +795,7 @@ void processPacket(libtrace_packet_t *packet) {
 	  // Generate a WAIT event. We only do so for zero-payload packets
 	  // because this tells us that the peer was waiting for some ADU
 	  // and could not send data without it.
+		      
 	  if (!tcp->syn && payload_size == 0 && acked > 0)
 	    {
 	      flowmap[fid].last_ts = ts;

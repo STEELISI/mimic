@@ -85,9 +85,11 @@ void print_stats(int flag)
 	  delay += it->second.delay;
 	}
     }
+  double avgd;
   if (completed == 0)
-    completed = 1;
-  double avgd = (double)delay/completed;
+    avgd = (double)delay/completed;
+  else
+    avgd = (double)delay;
   long int t, e;
   statsMTX.lock();
   t = global_throughput;
@@ -299,7 +301,9 @@ int main(int argc, char* argv[]) {
     }
       
 
-   
+    if (DEBUG)
+      std:: cout<<"Debug is ON"<<std::endl;
+    
     // Create FileWorker threads
     int notifierFD = createEventFD();
     EventNotifier* loadMoreNotifier = new EventNotifier(notifierFD, "Test file notifier.");

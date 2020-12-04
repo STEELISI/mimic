@@ -29,7 +29,7 @@
 
 // Max length of a message
 // We can send more than this but we'll do it in chunks
-#define MAXLEN 1000000
+#define MAXLEN 100000
 // How many file events we process in one loop cycle
 #define CHUNK 1000
 
@@ -49,9 +49,9 @@ void EventHandler::newConnectionUpdate(int sockfd, long int conn_id, long int pl
     {
       // Calculate how far we are from planned timing
       int delay = (now - myConns[conn_id].lastPlannedEvent);
-      if (delay > 0)
+      if (delay > myConns[conn_id].delay)
 	{
-	  myConns[conn_id].delay += delay;	  
+	  myConns[conn_id].delay = delay;	  
 	  (*connStats)[conn_id].delay = myConns[conn_id].delay;
 	}
       myConns[conn_id].lastPlannedEvent = now;
@@ -601,6 +601,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
       
       dispatch(dispatchJob, now);
       nextHeapEventTime = eventsToHandle->nextEventTime();
+
+      // Check what time it is now
+      now = msSinceStart(startTime);
     }
 
   // Check what time it is now
@@ -875,11 +878,17 @@ long int EventHandler::getNewEvents(long int conn_id)
   while (nextEventTime >= 0)
     {
       Event job = e->nextEvent();
+      // Keep adding until we find a SEND after RECV. In that case we have to return the SEND to the queue.
+      if (job.type == SEND && myConns[conn_id].waitingToRecv > 0)
+	{
+	  e->addEvent(job);
+	  break;
+	}
       job.sockfd = myConns[conn_id].sockfd;
-      if (DEBUG)
-	(*out)<< "Event handler moved new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<(job.ms_from_start+myConns[conn_id].delay)<<" because of delay "<<myConns[conn_id].delay<<std::endl;
       job.origTime = job.ms_from_start;
-      job.ms_from_start += myConns[conn_id].delay;
+      //job.ms_from_start += myConns[conn_id].delay; Jelena hack
+      if (DEBUG)
+	(*out)<< "Event handler moved new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<job.ms_from_start<<" max delay "<<myConns[conn_id].delay<<std::endl;
       
       // Delay CLOSE events by 1 second
       if (job.type == CLOSE)
@@ -891,9 +900,6 @@ long int EventHandler::getNewEvents(long int conn_id)
 	  myConns[conn_id].stalled = true;
 	  return ftime;
 	}
-      // Keep adding until we add a RECV. Then we have to wait for RECV to clear.
-      if (job.type == RECV)
-	break;
     }
   return ftime;
 }

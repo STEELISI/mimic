@@ -50,7 +50,7 @@ extern bool loadMoreFileEvents;
 bool returnLoadMoreFileEvents();
 
 // How many lines to read from file at once
-#define maxQueuedFileEvents 10000
+#define maxQueuedFileEvents 1000000
 
 // How much earlier to open ports
 #define SRV_UPSTART 4000
@@ -78,7 +78,6 @@ enum EventType {
                 CONNECT,	
                 CLOSE,		
                 RECV, 		
-                RECVD, 		
                 WAIT,		
                 SEND, 		
                 SRV_START,	

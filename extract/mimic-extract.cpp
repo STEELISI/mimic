@@ -23,8 +23,6 @@
 */
 
 
-using namespace std;
-
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
@@ -59,11 +57,6 @@ const double SHIFT = 10;
 // before a client tries to connect to it
 const double SRV_SHIFT = 6;
 
-// Maximum bytes to send in a pkt
-// We use this to ad-hoc detect new conns
-// on encapsulated IPv6
-const int MAX_GAP = 1000000;
-
 // How long to wait to start a new conn w same fid
 // This is to avoid starting new conns when there is
 // a RST and a peer keeps sending data after it
@@ -76,11 +69,11 @@ int conn_id_counter = 0;
 // rewrite ports too. Start from this port number
 // and cycle through.
 int nextport=1024;
-unordered_set<int> portsInUse;
+std::unordered_set<int> portsInUse;
 
 int checkUsed(int port)
 {
-  if (portsInUse.find(port) == portsInUse.end())
+  if (portsInUse.find(port) == portsInUse.end() && port != 0)
     {
       portsInUse.insert(port);
       return port;
@@ -94,7 +87,7 @@ int checkUsed(int port)
     }
   // Nothing was free at the moment
   if (nextport > 65535)
-    return -1;
+    return 0;
   portsInUse.insert(nextport);
   return nextport;
 }
@@ -104,9 +97,9 @@ int checkUsed(int port)
 double old_ts = 0;
 double start_ts = 0;
 bool orig = true;
-string client, server;
+std::string client, server;
 double gap;
-unordered_map<int, int> portsToChange;
+std::unordered_map <int, int> portsToChange;
 
 
 // When a flow is inactive, close it after this
@@ -145,7 +138,7 @@ bool lessthan(avgpair a,  avgpair b)
   return a.count < b.count;
 }
 
-map<uint32_t, bucket> host_stats;
+std::map <uint32_t, bucket> host_stats;
 
 FILE *hosts;
 
@@ -255,7 +248,7 @@ public:
     src = "";
   }
 
-  string src;
+  std::string src;
   double ts;
   long int bytes;
 };
@@ -266,22 +259,22 @@ public:
 class flow_stats
 {
 public:
-  map <uint32_t, packet> src_seqs;
-  map <uint32_t, packet> dst_seqs;
-  map <uint32_t, packet> src_acks;
-  map <uint32_t, packet> dst_acks;
-  map <uint32_t, int> src_IDs;
-  map <uint32_t, int> dst_IDs;
-  map <int, event> flow_events;
+  std::map <uint32_t, packet> src_seqs;
+  std::map <uint32_t, packet> dst_seqs;
+  std::map <uint32_t, packet> src_acks;
+  std::map <uint32_t, packet> dst_acks;
+  std::map <uint32_t, int> src_IDs;
+  std::map <uint32_t, int> dst_IDs;
+  std::map <int, event> flow_events;
   long int event_id;
   uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack, src_lastseq, dst_lastseq;
   long int src_toack, dst_toack, src_sent, dst_sent, src_waited, dst_waited;
   double src_ack_ts, dst_ack_ts, last_ts;
   enum states state;
   long int conn_id;
-  string src_str;
-  string dst_str;
-  string conn_str;
+  std::string src_str;
+  std::string dst_str;
+  std::string conn_str;
   bunch stored;
 
   
@@ -349,10 +342,10 @@ public:
 };
 
 // Main structure that stores information about flows
-map <flow_id, flow_stats> flowmap;
+std::map <flow_id, flow_stats> flowmap;
 
 // Blocked flows
-map <flow_id, double> blocklist;
+std::map <flow_id, double> blocklist;
 
 
 // This function updates flow stats (e.g., current seq number)
@@ -361,10 +354,10 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 		   uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id,
 		   double ts, int syn, int fin, int psh)
 {
-  map <uint32_t, packet> *seqs;
-  map <uint32_t, packet> *acks;
-  map <uint32_t, packet> *racks;
-  map <uint32_t, int> *IDs;
+  std::map <uint32_t, packet> *seqs;
+  std::map <uint32_t, packet> *acks;
+  std::map <uint32_t, packet> *racks;
+  std::map <uint32_t, int> *IDs;
   int duplicate = 0;
   uint32_t host;
   if (dir == 0)
@@ -391,7 +384,7 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
   else
     {
       // Found duplicate sequence number
-      map <uint32_t, packet>::iterator it = (*seqs).find(sseq);
+      std::map <uint32_t, packet>::iterator it = (*seqs).find(sseq);
       if (it != (*seqs).end())
 	{
 	  if (eseq == it->second.eseq && (syn || fin || psh))
@@ -410,9 +403,9 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
       (*acks)[eseq] = P;
     }
 
-  map <uint32_t, packet>::iterator it1 = (*racks).find(ack);
-  map <uint32_t, packet>::iterator it2 = (*racks).find(ack-1);
-  map <uint32_t, packet>::iterator it;
+  std::map <uint32_t, packet>::iterator it1 = (*racks).find(ack);
+  std::map <uint32_t, packet>::iterator it2 = (*racks).find(ack-1);
+  std::map <uint32_t, packet>::iterator it;
   int found = 0;
 
   // Is this a new ack for an existing, yet
@@ -434,7 +427,7 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 	{
 	  // First ack of this packet, calculate RTT
 	  double RTTsample = ts - p->ts;
-	  map<uint32_t, bucket>::iterator hit;
+	  std::map <uint32_t, bucket>::iterator hit;
 	  int i;
 	  
 	  hit = host_stats.find(host);
@@ -457,7 +450,7 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 }
 
 // Start the flow, rewrite ports if needed
-bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t seq,
+bool startFlow(flow_id fid, double ts, std::string src_str, std::string dst_str, uint32_t seq,
 	       uint32_t ack, int payload_size, bool orig)
 {
   flow_stats FS;
@@ -477,24 +470,24 @@ bool startFlow(flow_id fid, double ts, string src_str, string dst_str, uint32_t 
       if (!orig)
 	{
 	  src_port = checkUsed(src_port);
-	  if (src_port == -1)
+	  if (src_port == 0)
 	    return false;
 	}
-      flowmap[fid].conn_str = "CONN,"+to_string(flowmap[fid].conn_id)+","+src_str+
-	","+to_string(src_port)+",->,"+dst_str+","+to_string(dst_port)+","
-	+to_string(ts-start_ts+SRV_SHIFT);
+      flowmap[fid].conn_str = "CONN,"+std::to_string(flowmap[fid].conn_id)+","+src_str+
+	","+std::to_string(src_port)+",->,"+dst_str+","+std::to_string(dst_port)+","
+	+std::to_string(ts-start_ts+SRV_SHIFT);
     }
   else
     {
       if (!orig)
 	{
 	  dst_port = checkUsed(dst_port);
-	  if (dst_port == -1)
+	  if (dst_port == 0)
 	    return false;
 	}
-      flowmap[fid].conn_str = "CONN,"+to_string(flowmap[fid].conn_id)+","+
-	dst_str+","+to_string(dst_port)+",->,"+src_str+","+to_string(src_port)+","
-	+to_string(ts-start_ts+SRV_SHIFT);
+      flowmap[fid].conn_str = "CONN,"+std::to_string(flowmap[fid].conn_id)+","+
+	dst_str+","+std::to_string(dst_port)+",->,"+src_str+","+std::to_string(src_port)+","
+	+std::to_string(ts-start_ts+SRV_SHIFT);
     }
   return true;
 }
@@ -523,17 +516,17 @@ void closeFlow(flow_id fid)
       if (flowmap[fid].stored.bytes > 0)
 	{
 	  if (flowmap[fid].event_id == 0)
-	    cout<<flowmap[fid].conn_str<<endl;
-	  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-	      <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+	    std::cout<<flowmap[fid].conn_str<<std::endl;
+	  std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+	      <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 	}
       // Print WAIT and CLOSE events
       if (flowmap[fid].src_toack > 0)
-	cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",WAIT,"<<flowmap[fid].src_toack<<",0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<endl;
-      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<endl;
+	std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",WAIT,"<<flowmap[fid].src_toack<<",0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<std::endl;
+      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].src_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<std::endl;
       if (flowmap[fid].dst_toack > 0)
-	cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",WAIT,"<<flowmap[fid].dst_toack<<",0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<endl;
-      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<endl;
+	std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",WAIT,"<<flowmap[fid].dst_toack<<",0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<std::endl;
+      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<std::endl;
     }
   flowmap.erase(fid);
   flowmap.erase(rid);
@@ -547,26 +540,22 @@ void closeFlow(flow_id fid)
 // and close those that are idle
 void cleanFlows(double ts, bool force)
 {
-  map<flow_id, flow_stats>::iterator fit;
-  int i = 0;
-
-  for (fit = flowmap.begin(); fit != flowmap.end();)
+  for (auto fit = flowmap.begin(); fit != flowmap.end();)
     {
       if (fit->second.state == TBD || ts-fit->second.last_ts > DELTHRESH || force)
 	{
-	  map<flow_id, flow_stats>::iterator it = fit;
+	  auto it = fit;
 	  fit++;
 	  closeFlow(it->first);
 	}
       else
 	fit++;
     }
-  map<flow_id, double>::iterator bit;
-  for (bit = blocklist.begin(); bit != blocklist.end();)
+  for (auto bit = blocklist.begin(); bit != blocklist.end();)
     {
       if(ts - bit->second >= TIME_WAIT)
 	{
-	  map<flow_id, double>::iterator it = bit;
+	  auto it = bit;
 	  bit++;
 	  blocklist.erase(it);
 	}
@@ -577,8 +566,6 @@ void cleanFlows(double ts, bool force)
 
 // Main function that processes each packet
 void processPacket(libtrace_packet_t *packet) {
-
-  uint8_t dir, proto;
   int payload_size;
   int16_t id;
   
@@ -587,7 +574,6 @@ void processPacket(libtrace_packet_t *packet) {
   double ts;
   
   uint16_t l3_type;
-  uint32_t remaining;
   int src_port, dst_port;
   
   ip = (libtrace_ip_t *)trace_get_layer3(packet, &l3_type, NULL);
@@ -610,7 +596,7 @@ void processPacket(libtrace_packet_t *packet) {
     
     double last_ack_ts;
     uint32_t src, dst;
-    string src_str, dst_str;
+    std::string src_str, dst_str;
     src = ip->ip_src.s_addr;
     dst = ip->ip_dst.s_addr;
 
@@ -647,7 +633,6 @@ void processPacket(libtrace_packet_t *packet) {
     
     flow_id did(src, dst, src_port, dst_port);
     flow_id rid(dst, src, dst_port, src_port);
-    map<flow_id, flow_stats>::iterator fit;
 
     // Seq and ack number
     uint32_t seq = ntohl(tcp->seq)+payload_size;
@@ -701,7 +686,7 @@ void processPacket(libtrace_packet_t *packet) {
     long int acked = 0;
     
     // Process packet and generate SEND/WAIT records
-    int duplicate;
+    int duplicate = 0;
     if (src == fid.srcIP)
       {
 	duplicate = checkDuplicate(fid, 0, src, dst, seq-payload_size, seq, ack, id, ts,
@@ -758,11 +743,11 @@ void processPacket(libtrace_packet_t *packet) {
 	  // Always store it, but possibly print out what has been stored
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
 	    {
-	      // Could be the first record, so print conn string before it
+	      // Could be the first record, so print conn std::string before it
 	      if (flowmap[fid].event_id == 0)
-		cout<<flowmap[fid].conn_str<<endl;
-	      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+		std::cout<<flowmap[fid].conn_str<<std::endl;
+	      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 	      flowmap[fid].stored.ts = ts;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
@@ -805,19 +790,19 @@ void processPacket(libtrace_packet_t *packet) {
 		  // Print stored bytes if any
 		  if (flowmap[fid].stored.bytes > 0)
 		    {
-		      // Could be the first event, so print conn string too
+		      // Could be the first event, so print conn std::string too
 		      if (flowmap[fid].event_id == 0)
-			cout<<flowmap[fid].conn_str<<endl;
-		      cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-			  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<endl;
+			std::cout<<flowmap[fid].conn_str<<std::endl;
+		      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
+			  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 		      // Reset what was stored
 		      flowmap[fid].stored.ts = 0;
 		      flowmap[fid].stored.bytes = 0;
 		      flowmap[fid].stored.src = "";
 		    }
 		  // Print out the WAIT event
-		  cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
-		      <<src_str<<",WAIT,"<<acked<<","<<wait<<","<<ts-start_ts+SHIFT<<endl;
+		  std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
+		      <<src_str<<",WAIT,"<<acked<<","<<wait<<","<<ts-start_ts+SHIFT<<std::endl;
 		}
 	      // Adjust what has to be acked
 	      if (src == fid.srcIP)
@@ -837,9 +822,9 @@ void processPacket(libtrace_packet_t *packet) {
 }
 
 // Print help message about program usage
-void printHelp(string prog)
+void printHelp(std::string prog)
 {
-  cout<<"\n\tUsage: "<<prog<<" [-c oneIP -s otherIP] [-h] [-a GAP] pcapfile\n\n"
+  std::cout<<"\n\tUsage: "<<prog<<" [-c oneIP -s otherIP] [-h] [-a GAP] pcapfile\n\n"
 
     "\tIn the absence of -c and -s flags, original ports and IPs will be mined.\n"
     "\tOtherwise, IPs will be overwritten with the IPs you have specified\n"
@@ -877,7 +862,7 @@ int main(int argc, char *argv[])
       orig = false;
       break;
     case 'a':
-      gap = stod(optarg);
+      gap = std::stod(optarg);
       break;
     case 'h':
       printHelp(argv[0]);
@@ -888,7 +873,7 @@ int main(int argc, char *argv[])
   }
   if (orig == false && (client == "" || server == ""))
     {
-      cerr<<"Both client and server IPs must be specified\n";
+      std::cerr<<"Both client and server IPs must be specified\n";
       exit(0);	    
     }
   
@@ -899,7 +884,7 @@ int main(int argc, char *argv[])
   }
   
   if (optind >= argc) {
-    cerr<<"Expected filename to process after options\n";
+    std::cerr<<"Expected filename to process after options\n";
     exit(0);
   }
   
@@ -907,7 +892,7 @@ int main(int argc, char *argv[])
   // Read any ports whose numbers should be changed
   // because they are reserved on machines that will
   // perform replay
-  ifstream ports;
+  std::ifstream ports;
   ports.open ("ports.csv");
   int a, b;
   
@@ -960,12 +945,12 @@ int main(int argc, char *argv[])
   // Iterate through map and print host RTTs
   hosts = fopen("hosts.csv", "w");
   fprintf(hosts, "HOST,DELAY,DROP,CONNS,MBYTES\n");
-  map<uint32_t, bucket>::iterator it;
-  for (it = host_stats.begin(); it != host_stats.end(); it++) {
+
+  for (auto it = host_stats.begin(); it != host_stats.end(); it++) {
     int i, total, count=0;
     double sum;
-    vector<avgpair> sortedcounts;
-    vector<avgpair>::reverse_iterator sit;
+    std::vector<avgpair> sortedcounts;
+    std::vector<avgpair>::reverse_iterator sit;
     for (i=0; i<6;i++)
       {
 	count += it->second.pairs[i].count;

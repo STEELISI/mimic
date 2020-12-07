@@ -50,7 +50,7 @@ extern bool loadMoreFileEvents;
 bool returnLoadMoreFileEvents();
 
 // How many lines to read from file at once
-#define maxQueuedFileEvents 1000000
+#define maxQueuedFileEvents 100000
 
 // How much earlier to open ports
 #define SRV_UPSTART 4000
@@ -110,9 +110,10 @@ class Event {
         EventType type = NONE;        
         long int conn_id = -1;
         long int event_id = -1;
+	long int wait = 0;
         long int value = 0;		/* What this value holds depends on what type of event this is. */
 	Event();
-	Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle, EventType t, long int cid, long int eid, long int v);
+	Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle, EventType t, long int cid, long int eid, long int w, long int v);
 };
 
 

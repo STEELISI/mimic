@@ -42,16 +42,18 @@ void EventHandler::newConnectionUpdate(int sockfd, long int conn_id, long int pl
   myConns[conn_id].waitingToRecv = 0;
   myConns[conn_id].waitingToSend = 0;
   myConns[conn_id].stalled = false;
-  
+
   if (planned > 0)
     myConns[conn_id].lastPlannedEvent = planned;
   else
     {
       // Calculate how far we are from planned timing
       int delay = (now - myConns[conn_id].lastPlannedEvent);
-      myConns[conn_id].delay += delay;
-      myConns[conn_id].samples ++;
-      (*connStats)[conn_id].delay = myConns[conn_id].delay/myConns[conn_id].samples;
+      //std::cout<<delay<<std::endl;
+      myConns[conn_id].delay = delay;
+      myConns[conn_id].lastdelay = delay; // Jelena hack
+
+      (*connStats)[conn_id].delay = myConns[conn_id].delay;
       myConns[conn_id].lastPlannedEvent = now;
     }
   if (DEBUG)
@@ -66,9 +68,12 @@ void EventHandler::connectionUpdate(long int conn_id, long int planned, long int
   else
     {
       // Calculate how far we are from planned timing
-      myConns[conn_id].delay += (now - myConns[conn_id].lastPlannedEvent);
-      myConns[conn_id].lastPlannedEvent = now;     
+      int delay = (now - myConns[conn_id].lastPlannedEvent);
+      //std::cout<<delay<<std::endl;
+      myConns[conn_id].delay += delay;
+      myConns[conn_id].lastdelay = delay; // Jelena hack
       (*connStats)[conn_id].delay = myConns[conn_id].delay;
+      myConns[conn_id].lastPlannedEvent = now;     
     }
   if (DEBUG)
     (*out)<<"Conn "<<conn_id<<" time now "<<now<<" planned time "<<myConns[conn_id].lastPlannedEvent<<" delay "<<myConns[conn_id].delay<<std::endl;
@@ -102,7 +107,7 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
   }
   case RECV: {
     // Waiting to receive some number of bytes
-    connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
+    //connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
     if (DEBUG)
       (*out)<<"RECV JOB waiting to recv "<<myConns[dispatchJob.conn_id].waitingToRecv<<" on conn "<<dispatchJob.conn_id<<" job value "<<dispatchJob.value<<std::endl;
     myConns[dispatchJob.conn_id].waitingToRecv = myConns[dispatchJob.conn_id].waitingToRecv + dispatchJob.value;
@@ -113,8 +118,8 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
     if (myConns[dispatchJob.conn_id].waitingToRecv <= 0)
       {
 	(*connStats)[dispatchJob.conn_id].last_completed++;
-	connectionUpdate(dispatchJob.conn_id, 0, now);
-	getNewEvents(dispatchJob.conn_id);
+	//connectionUpdate(dispatchJob.conn_id, 0, now);
+	getNewEvents(dispatchJob.conn_id, now);
 	if (DEBUG)
 	  (*out)<<"For conn "<<dispatchJob.conn_id<<" last completed "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
 	break;
@@ -142,6 +147,9 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	      {
 		if (DEBUG)
 		  (*out)<<"RECVd "<<total<<" bytes for conn "<<dispatchJob.conn_id<<std::endl;
+		myConns[dispatchJob.conn_id].totalrecvd += total;
+		if (DEBUG)
+		  (*out)<<"Total recvd "<<myConns[dispatchJob.conn_id].totalrecvd<<std::endl;
 		
 		// Update peer time, this helps us to sync speed between two peers
 		if (dispatchJob.origTime > peerTime)
@@ -161,8 +169,8 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		    (*connStats)[dispatchJob.conn_id].last_completed++;
 		    if (DEBUG)
 		      (*out)<<"For conn "<<dispatchJob.conn_id<<" last completed "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
-		    connectionUpdate(dispatchJob.conn_id, 0, now);
-		    getNewEvents(dispatchJob.conn_id);		      
+		    //connectionUpdate(dispatchJob.conn_id, 0, now);
+		    getNewEvents(dispatchJob.conn_id, now);		      
 		    break;
 		  }
 	      }
@@ -256,14 +264,16 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	    (*connStats)[dispatchJob.conn_id].started = now;
 	    if (DEBUG)
 	      (*out)<<"Connected successfully for conn "<<dispatchJob.conn_id<<" state is now "<<myConns[dispatchJob.conn_id].state<<" last completed "<<(*connStats)[dispatchJob.conn_id].last_completed<<std::endl;
-	    getNewEvents(dispatchJob.conn_id);
+	    getNewEvents(dispatchJob.conn_id, now);
 	  }
       }  
     break;
   }
   case SEND: {
+    long int conn_id = dispatchJob.conn_id;
+    myConns[conn_id].sends.push(dispatchJob);
     // Some bookkeeping
-    connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
+    //connectionUpdate(dispatchJob.conn_id, dispatchJob.ms_from_start, now);
     myConns[dispatchJob.conn_id].waitingToSend += dispatchJob.value;
     if (DEBUG)
       (*out)<<"Handling SEND event waiting to send "<<myConns[dispatchJob.conn_id].waitingToSend<<" on sock "<<dispatchJob.sockfd<<std::endl;
@@ -290,6 +300,27 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 	    {
 	      long int conn_id = dispatchJob.conn_id;
 	      myConns[conn_id].waitingToSend -= n;
+	      myConns[conn_id].totalsent += n;
+	      if (DEBUG)
+                (*out)<<"Total sent "<<myConns[conn_id].totalsent<<std::endl;
+	      
+	      long int sentBytes = n;
+	      while (sentBytes > 0)
+		if (sentBytes < myConns[conn_id].sends.front().value)
+		   {
+		     myConns[conn_id].sends.front().value -= sentBytes;
+		     sentBytes = 0;
+		   }
+		 else
+		   {
+		     Event job = myConns[conn_id].sends.front();
+		     myConns[conn_id].sends.pop();
+		     sentBytes -= job.value;
+		     //if (myConns[conn_id].waitingToRecv <= 0) // Jelena - could also check waitingToSend
+			 //getNewEvents(conn_id, now);
+		   }
+	      
+	      
 	      if (DEBUG)
 		(*out)<<"Successfuly handled SEND event for conn "<<conn_id<<" for "<<n<<" bytes\n";
 	      if (myConns[conn_id].origTime < dispatchJob.origTime)
@@ -454,7 +485,7 @@ void EventHandler::checkStalledConns(long int now)
 	myPollHandler->watchForWrite(myConns[it->first].sockfd);
       // If connection is ready to proceed try to get more events
       if (myConns[it->first].waitingToSend <= 0 &&  myConns[it->first].waitingToRecv <= 0 && myConns[it->first].state != DONE && myConns[it->first].stalled)
-	  getNewEvents(it->first);
+	getNewEvents(it->first, now);
 
       // This could be a connection that multiple threads were waiting on and one won
       // Erase it from other threads
@@ -490,7 +521,7 @@ void EventHandler::checkOrphanConns(long int now)
 	  (*connStats)[conn_id].last_completed++;
 	  (*connStats)[conn_id].started = now;
 	  (*connStats)[conn_id].thread = myID;
-	  getNewEvents(conn_id);
+	  getNewEvents(conn_id, now);
 	  long int ftime = myConns[conn_id].origStart;
 
 	  // Update peer time
@@ -590,6 +621,18 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
   
     while(nextHeapEventTime <= now && nextHeapEventTime >= 0) {
       Event dispatchJob = eventsToHandle->nextEvent();
+      long int ddelay = now - dispatchJob.origTime;
+      if (ddelay > myConns[dispatchJob.conn_id].delay)
+	myConns[dispatchJob.conn_id].delay = ddelay;
+
+      if (dispatchJob.conn_id > -1 && dispatchJob.origTime + myConns[dispatchJob.conn_id].delay > dispatchJob.ms_from_start) // Jelena hack extension
+	{
+	  dispatchJob.ms_from_start = dispatchJob.origTime + myConns[dispatchJob.conn_id].delay;
+	  if (DEBUG)
+	    (*out)<<"Was trying the job "<<EventNames[dispatchJob.type]<<" orig time "<<dispatchJob.origTime<<" ms from start "<<dispatchJob.ms_from_start<<" current delay "<<myConns[dispatchJob.conn_id].delay<<" return with ms from start "<<dispatchJob.ms_from_start<<std::endl;
+	  eventsToHandle->addEvent(dispatchJob);
+	  continue;
+	}
       eventsHandled++;
       
       fileEventsHandledCount++;
@@ -669,7 +712,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		(*connStats)[conn_id].started = now;
 		(*connStats)[conn_id].thread = myID;
 		long int ftime = myConns[conn_id].origStart;
-		getNewEvents(conn_id);
+		getNewEvents(conn_id, now);
 		if (ftime > peerTime)
 		  {
 		    peerTime = ftime;
@@ -704,7 +747,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	  (*connStats)[conn_id].started = now;
 	  if (DEBUG)
 	    (*out)<<"Connected successfully, conn "<<conn_id<<" state is now "<<myConns[conn_id].state<<" last completed "<<(*connStats)[conn_id].last_completed<<std::endl;
-	  getNewEvents(conn_id);
+	  getNewEvents(conn_id, now);
 	  continue;
 	}
       
@@ -743,12 +786,31 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		    {
 		      if (DEBUG)
 			(*out)<<"Successfully handled SEND for conn "<<conn_id<<" for "<<n<<" bytes\n";
+
+		      long int sentBytes = n;
+		      while (sentBytes > 0)
+			if (sentBytes < myConns[conn_id].sends.front().value)
+			  {
+			    myConns[conn_id].sends.front().value -= sentBytes;
+			    sentBytes = 0;
+			  }
+			else
+			  {
+			    Event job = myConns[conn_id].sends.front();
+			    myConns[conn_id].sends.pop();
+			    sentBytes -= job.value;
+			    //if (myConns[conn_id].waitingToRecv <= 0) // Jelena - could also check waitingToSend
+				//getNewEvents(conn_id, now);
+			  }
 		      
 		      if (myConns[conn_id].origTime > myTime)
 			myTime = myConns[conn_id].origTime;
 		      
 		      my_bytes += n;
 		      myConns[conn_id].waitingToSend -= n;
+		      myConns[conn_id].totalsent += n;
+		      if (DEBUG)
+			(*out)<<"Total sent "<<myConns[conn_id].totalsent<<std::endl;
 		      // Jelena: this should be in a while loop
 		      if (myConns[conn_id].waitingToSend > 0)
 			{
@@ -759,9 +821,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		      else
 			{			  
 			  // Sent everything we waited for
-			  connectionUpdate(conn_id, 0, now);
+			  //connectionUpdate(conn_id, 0, now);
 			  (*connStats)[conn_id].last_completed++;
-			  getNewEvents(conn_id);
+			  getNewEvents(conn_id, now);
 			}
 		    }
 		}
@@ -805,6 +867,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 
 	      if (DEBUG)
 		(*out)<<"RECVd "<<total<<" bytes for conn "<<conn_id<<" orig time "<<myConns[conn_id].origTime<<" peer time "<<peerTime<<std::endl;
+	      myConns[conn_id].totalrecvd += total;
+	      if (DEBUG)
+		(*out)<<"Total recvd "<<myConns[conn_id].totalrecvd<<std::endl;
 	      if (myConns[conn_id].origTime > peerTime)
 		{
 		  peerTime = myConns[conn_id].origTime;
@@ -823,9 +888,9 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		  if (myConns[conn_id].waitingToRecv == 0 ||
 		      (myConns[conn_id].waitingToRecv < 0 && waited > 0))
 		    {		     
-		      connectionUpdate(conn_id, 0, now);
+		      //connectionUpdate(conn_id, 0, now);
 		      (*connStats)[conn_id].last_completed++; 
-		      getNewEvents(conn_id);
+		      getNewEvents(conn_id, now);
 		    }
 		}
 	    }
@@ -861,7 +926,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 }
 
 // Get new events for a connection
-long int EventHandler::getNewEvents(long int conn_id)
+long int EventHandler::getNewEvents(long int conn_id, long int now)
 {
   EventHeap* e = &myConns[conn_id].eventQueue;
   long int nextEventTime = e->nextEventTime();
@@ -873,28 +938,75 @@ long int EventHandler::getNewEvents(long int conn_id)
   else 
     myConns[conn_id].stalled = true;
 
-  bool started = false;
+  bool previous = false;
   Event pjob;
-  while (nextEventTime >= 0)
+  while (nextEventTime >= 0) // && nextEventTime <= now + 1000)
     {
       Event job = e->nextEvent();
-      
-      // Keep adding until we find a SEND after RECV. In that case we have to return the SEND to the queue.
-      if (job.type == SEND && myConns[conn_id].waitingToRecv > 0)
-	{
-	  e->addEvent(job);
-	  break;
-	}
       job.sockfd = myConns[conn_id].sockfd;
       job.origTime = job.ms_from_start;
-      //job.ms_from_start += myConns[conn_id].delay; Jelena hack
-      if (DEBUG)
-	(*out)<< "Event handler moved new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<job.ms_from_start<<" max delay "<<myConns[conn_id].delay<<std::endl;
+      job.ms_from_start += myConns[conn_id].delay; //Jelena hack extension
       
       // Delay CLOSE events by 1 second
       if (job.type == CLOSE)
 	job.ms_from_start += 1000;
-      eventsToHandle->addEvent(job);
+
+      if (DEBUG)
+	(*out)<< "Event handler would move new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<job.ms_from_start<<" max delay "<<myConns[conn_id].delay<<std::endl; 
+
+      // Fold RECV with previous if possible
+      if (job.type == RECV)
+	{
+	  if (previous)
+	    {
+	      if(pjob.value + job.value < LONG_MAX/2)
+		{
+		  pjob.value += job.value;
+		  //if (DEBUG)
+		  //(*out)<<" Added to previous RECV, value "<<pjob.value<<std::endl;
+		}
+	      else
+		{
+		  eventsToHandle->addEvent(pjob);
+		  e->addEvent(job);
+		  //if (DEBUG)
+		  //(*out)<<" Pushed previous RECV, value "<<pjob.value<<" and returned this job to queue"<<std::endl;
+		  break;
+		}
+	    }
+	  else
+	    {
+	      pjob = job;
+	      //if (DEBUG)
+	      //(*out)<<" Started previous RECV, value "<<pjob.value<<std::endl;
+	    }
+	  previous = true;
+	}
+      else
+	{
+	  if (previous)
+	    {
+	      eventsToHandle->addEvent(pjob);
+	      e->addEvent(job);
+	      if (DEBUG)
+		(*out)<<" Pushed previous RECV, value "<<pjob.value<<" and returned this job to queue"<<std::endl;
+	      break;
+	    }
+	  else if (myConns[conn_id].waitingToRecv == 0)
+	    {
+	      eventsToHandle->addEvent(job);
+	      if (DEBUG)
+		(*out)<<" Added to queue, value "<<job.value<<std::endl;
+	    }
+	  else
+	    {
+	      e->addEvent(job);
+	      if (DEBUG)
+		(*out)<<" Still waiting to receive, returned to queue value "<<job.value<<std::endl;
+	      break;
+	    }
+	}
+      
       nextEventTime = e->nextEventTime();
       if (nextEventTime < 0)
 	{

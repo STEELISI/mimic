@@ -27,6 +27,7 @@
 #include <string>
 #include <sstream>
 #include <fcntl.h>
+#include <queue>
 #include <vector>
 #include <queue>
 #include <map> 
@@ -45,11 +46,15 @@ struct connData
   long int waitingToRecv = 0;
   long int waitingToSend = 0;
   long int delay = 0;
+  long int lastdelay = 0;
   long int samples = 0;
   long int lastPlannedEvent = 0;
   long int origStart = 0;
   long int origTime = 0;
   EventHeap eventQueue;
+  long int totalsent = 0;
+  long int totalrecvd = 0;
+  std::queue<Event> sends;
   long int time = 0;
   enum conn_state state = INIT;
   bool stalled = false;
@@ -100,7 +105,7 @@ class EventHandler {
   void newConnectionUpdate(int sockfd, long int connID, long int planned, long int now);
   void connectionUpdate(long int connID, long int planned, long int now);
   long int acceptNewConnection(struct epoll_event *poll_e, long int now);
-  long int getNewEvents(long int conn_id);
+  long int getNewEvents(long int conn_id, long int now);
   void checkStalledConns(long int now);
   void checkOrphanConns(long int now);
   void checkQueues();

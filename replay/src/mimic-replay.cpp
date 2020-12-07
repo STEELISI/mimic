@@ -80,16 +80,15 @@ void print_stats(int flag)
       if (flag)
 	myfile<<"Conn "<<it->first<<" state "<<csNames[it->second.state]<<" total events "<<it->second.total_events<<" last event "<<it->second.last_completed<<" delay "<<it->second.delay/1000.0<<" s, started "<<it->second.started/1000.0<<" completed "<<it->second.completed/1000.0<<std::endl;
       if (it->second.state == DONE)
-	{
 	  completed++;
-	  delay += it->second.delay;
-	}
+      
+      delay += it->second.delay;
     }
   double avgd;
-  if (completed == 0)
-    avgd = (double)delay/completed;
+  if (total > 0)
+    avgd = (double)delay/total;
   else
-    avgd = (double)delay;
+    avgd = 0;
   long int t, e;
   statsMTX.lock();
   t = global_throughput;

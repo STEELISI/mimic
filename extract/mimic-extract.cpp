@@ -265,7 +265,8 @@ public:
   std::map <uint32_t, packet> dst_acks;
   std::map <uint32_t, int> src_IDs;
   std::map <uint32_t, int> dst_IDs;
-  std::map <int, event> flow_events;
+  std::map <std::string, double> last_event_ts;
+  
   long int event_id;
   uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack, src_lastseq, dst_lastseq;
   long int src_toack, dst_toack, src_sent, dst_sent, src_waited, dst_waited;
@@ -301,7 +302,6 @@ public:
     src_IDs.clear();
     dst_IDs.clear();
 
-    flow_events.clear();
   }
 
   flow_stats& operator=(const flow_stats& f)
@@ -317,7 +317,6 @@ public:
 	src_acks = f.src_acks;
 	dst_acks = f.dst_acks;
 	stored = f.stored;
-	flow_events = f.flow_events;
 	event_id = f.event_id;
 	src_seq = f.src_seq;
 	dst_seq = f.dst_seq;
@@ -459,7 +458,7 @@ bool startFlow(flow_id fid, double ts, std::string src_str, std::string dst_str,
   flowmap[fid] = FS;
   flowmap[fid].src_str = src_str;
   flowmap[fid].dst_str = dst_str;
-  flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq-payload_size;
+  flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq;
   flowmap[fid].dst_lastseq = ack;
   flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
   flowmap[fid].src_lastack = ack;
@@ -517,8 +516,11 @@ void closeFlow(flow_id fid)
 	{
 	  if (flowmap[fid].event_id == 0)
 	    std::cout<<flowmap[fid].conn_str<<std::endl;
+	  double diff = 0;
+	  if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+	    diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 	  std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-	      <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
+		   <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<"0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 	}
       // Print WAIT and CLOSE events
       if (flowmap[fid].src_toack > 0)
@@ -638,6 +640,8 @@ void processPacket(libtrace_packet_t *packet) {
     uint32_t seq = ntohl(tcp->seq)+payload_size;
     uint32_t ack = ntohl(tcp->ack_seq) - 1;
 
+    //std::cout<<"Ts "<<ts<<" seq "<<seq-payload_size<<std::endl;
+    
     // A new flow
     if (flowmap.find(did)==flowmap.end() && flowmap.find(rid)==flowmap.end())
       {
@@ -740,14 +744,31 @@ void processPacket(libtrace_packet_t *packet) {
       if (payload_size != 0)
 	{
 	  flowmap[fid].last_ts = ts;
+	  // Adjust payload if we have to, app-faithful behavior
+	  unsigned int *lastseq;
+	  if (src == fid.srcIP)
+	    lastseq = &flowmap[fid].src_lastseq;
+	  else
+	    lastseq = &flowmap[fid].dst_lastseq;
+	  // Is there a gap?
+	  if (*lastseq < seq - payload_size)
+	    {
+	      //std::cout<<ts<<" There is gap between "<<seq<<" and "<<*lastseq<<std::endl;
+	      payload_size += seq - payload_size - *lastseq ;
+	    }
+	  *lastseq = seq;
 	  // Always store it, but possibly print out what has been stored
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
 	    {
 	      // Could be the first record, so print conn std::string before it
 	      if (flowmap[fid].event_id == 0)
 		std::cout<<flowmap[fid].conn_str<<std::endl;
+	      double diff = 0;
+	      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+		diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 	      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
+	      flowmap[fid].last_event_ts[flowmap[fid].stored.src] = flowmap[fid].stored.ts;
 	      flowmap[fid].stored.ts = ts;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
@@ -764,13 +785,11 @@ void processPacket(libtrace_packet_t *packet) {
 	  // Adjust ack numbers
 	  if (src == fid.srcIP)
 	    {
-	      flowmap[fid].src_lastseq = seq;
 	      flowmap[fid].dst_toack += payload_size;
 	      flowmap[fid].src_sent += payload_size;
 	    }
 	  else
 	    {
-	      flowmap[fid].dst_lastseq = seq;
 	      flowmap[fid].src_toack += payload_size;
 	      flowmap[fid].dst_sent += payload_size;
 	    }
@@ -793,16 +812,21 @@ void processPacket(libtrace_packet_t *packet) {
 		      // Could be the first event, so print conn std::string too
 		      if (flowmap[fid].event_id == 0)
 			std::cout<<flowmap[fid].conn_str<<std::endl;
+		      double diff = 0;
+		      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+			diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 		      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-			  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
+			       <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<","<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 		      // Reset what was stored
+		      flowmap[fid].last_event_ts[flowmap[fid].stored.src] = flowmap[fid].stored.ts;
 		      flowmap[fid].stored.ts = 0;
 		      flowmap[fid].stored.bytes = 0;
 		      flowmap[fid].stored.src = "";
 		    }
 		  // Print out the WAIT event
 		  std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","
-		      <<src_str<<",WAIT,"<<acked<<","<<wait<<","<<ts-start_ts+SHIFT<<std::endl;
+		      <<src_str<<",WAIT,"<<acked<<",0,"<<ts-start_ts+SHIFT<<std::endl;
+		  flowmap[fid].last_event_ts[src_str] = ts;
 		}
 	      // Adjust what has to be acked
 	      if (src == fid.srcIP)

@@ -541,7 +541,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 	      Event e;
 	      e.conn_id = atol(eventData[i][1].c_str());
 	      e.event_id = atol(eventData[i][2].c_str());      
-	      e.value = atoi(eventData[i][5].c_str()); 
+	      e.value = atol(eventData[i][5].c_str()); 
 	      e.ms_from_last_event = (long int)(std::stod(eventData[i][6].c_str()) * 1000);
 	      e.ms_from_start = (long int)(std::stod(eventData[i][7].c_str()) * 1000) + loopedCount * loopDuration;
 	      // Type of event - send and receive. 

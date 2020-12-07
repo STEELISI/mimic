@@ -37,7 +37,7 @@ long int msSinceStart(std::chrono::high_resolution_clock::time_point startTime) 
 }
 
 // Create an event
-Event::Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle, EventType t, long int cid, long int eid, long int v)
+Event::Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle, EventType t, long int cid, long int eid, long int w, long int v)
 {
   serverString = ss;
   connString= cs;
@@ -47,6 +47,7 @@ Event::Event(std::string ss, std::string cs, int fd, long int mfs, long int mfle
   type = t;
   conn_id = cid;
   event_id = eid;
+  wait = w;
   value = v;
 }
 

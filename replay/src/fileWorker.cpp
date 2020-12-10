@@ -551,11 +551,7 @@ void FileWorker::loadEvents(int eventsToGet, int rounds) {
 		if(eventData[i][4].compare("SEND")==0)
 		  e.type = SEND;
 		else if (eventData[i][4].compare("WAIT")==0)
-		  {
-		    e.type = RECV;
-		    // Jelena hack
-		    e.ms_from_start -= 100;
-		  }
+		  e.type = RECV;
 		else if (eventData[i][4].compare("CLOSE")==0)
 		  e.type = CLOSE;
 		

@@ -316,8 +316,8 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
 		     Event job = myConns[conn_id].sends.front();
 		     myConns[conn_id].sends.pop();
 		     sentBytes -= job.value;
-		     //if (myConns[conn_id].waitingToRecv <= 0) // Jelena - could also check waitingToSend
-			 //getNewEvents(conn_id, now);
+		     if (myConns[conn_id].waitingToRecv <= 0) // Jelena one event 
+		       getNewEvents(conn_id, now);
 		   }
 	      
 	      
@@ -583,7 +583,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	Event dispatchJob = *job;
 
 	if (DEBUG)
-	  (*out)<< "File Event handler GOT JOB " << EventNames[dispatchJob.type] <<" serverstring "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event id "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" now "<<now<<" value "<<dispatchJob.value<<" server "<<dispatchJob.serverString<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
+	  (*out)<< "File Event handler GOT JOB " << EventNames[dispatchJob.type] <<" serverstring "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event id "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" ms from last "<<dispatchJob.ms_from_last_event<<" now "<<now<<" value "<<dispatchJob.value<<" server "<<dispatchJob.serverString<<" left in queue "<<incomingFileEvents->getLength()<<std::endl;
 	// Add job to connection-specific queue
 	if (dispatchJob.type == SEND || dispatchJob.type == RECV || dispatchJob.type == CLOSE)
 	  myConns[dispatchJob.conn_id].eventQueue.addEvent(dispatchJob);
@@ -625,7 +625,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
       if (ddelay > myConns[dispatchJob.conn_id].delay)
 	myConns[dispatchJob.conn_id].delay = ddelay;
 
-      if (dispatchJob.conn_id > -1 && dispatchJob.origTime + myConns[dispatchJob.conn_id].delay > dispatchJob.ms_from_start) // Jelena hack extension
+      if (false) //dispatchJob.conn_id > -1 && dispatchJob.origTime + myConns[dispatchJob.conn_id].delay > dispatchJob.ms_from_start) // Jelena hack extension
 	{
 	  dispatchJob.ms_from_start = dispatchJob.origTime + myConns[dispatchJob.conn_id].delay;
 	  if (DEBUG)
@@ -938,75 +938,89 @@ long int EventHandler::getNewEvents(long int conn_id, long int now)
   else 
     myConns[conn_id].stalled = true;
 
-  bool previous = false;
-  Event pjob;
+  bool previous_recv = false;
+  bool previous_send = false;
+  Event pjob_r, pjob_s;
   while (nextEventTime >= 0) // && nextEventTime <= now + 1000)
     {
       Event job = e->nextEvent();
       job.sockfd = myConns[conn_id].sockfd;
       job.origTime = job.ms_from_start;
-      job.ms_from_start += myConns[conn_id].delay; //Jelena hack extension
+      //job.ms_from_start += myConns[conn_id].delay; //Jelena hack extension
       
       // Delay CLOSE events by 1 second
       if (job.type == CLOSE)
 	job.ms_from_start += 1000;
 
       if (DEBUG)
-	(*out)<< "Event handler would move new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<job.ms_from_start<<" max delay "<<myConns[conn_id].delay<<std::endl; 
+	(*out)<< "Event handler would move new JOB " << EventNames[job.type] <<" conn "<<job.conn_id<<" event "<<job.event_id<<" for time "<<job.ms_from_start<<" to send "<<job.value<<" now moved to time "<<job.ms_from_start<<" max delay "<<myConns[conn_id].delay<<" delay from last "<<job.ms_from_last_event<<std::endl; 
 
       // Fold RECV with previous if possible
       if (job.type == RECV)
 	{
-	  if (previous)
+	  if (previous_recv)
 	    {
-	      if(pjob.value + job.value < LONG_MAX/2)
+	      if(pjob_r.value + job.value < LONG_MAX/2)
 		{
-		  pjob.value += job.value;
-		  //if (DEBUG)
-		  //(*out)<<" Added to previous RECV, value "<<pjob.value<<std::endl;
+		  pjob_r.value += job.value;
 		}
 	      else
 		{
-		  eventsToHandle->addEvent(pjob);
+		  eventsToHandle->addEvent(pjob_r);
 		  e->addEvent(job);
-		  //if (DEBUG)
-		  //(*out)<<" Pushed previous RECV, value "<<pjob.value<<" and returned this job to queue"<<std::endl;
 		  break;
 		}
 	    }
-	  else
+	  else 
 	    {
-	      pjob = job;
-	      //if (DEBUG)
-	      //(*out)<<" Started previous RECV, value "<<pjob.value<<std::endl;
+	      if (previous_send)
+		{
+		  eventsToHandle->addEvent(pjob_s);		  
+		  previous_send = false;
+		}
+	      pjob_r = job;
 	    }
-	  previous = true;
+	  previous_recv = true;
 	}
       else
 	{
-	  if (previous)
+	  // There was previous recv, this SEND cannot be queued
+	  if (previous_recv)
 	    {
-	      eventsToHandle->addEvent(pjob);
+	      eventsToHandle->addEvent(pjob_r);
 	      e->addEvent(job);
-	      if (DEBUG)
-		(*out)<<" Pushed previous RECV, value "<<pjob.value<<" and returned this job to queue"<<std::endl;
 	      break;
 	    }
-	  else if (myConns[conn_id].waitingToRecv == 0)
+	  else if (myConns[conn_id].waitingToRecv <= 0)
 	    {
-	      eventsToHandle->addEvent(job);
-	      if (DEBUG)
-		(*out)<<" Added to queue, value "<<job.value<<std::endl;
+	      if (previous_send)
+		{
+		  if (job.ms_from_last_event == 0) // Jelena: this should be thresh
+		    {
+		      pjob_s.value += job.value;
+		    }
+		  else
+		    {
+		      // Previous send is too far
+		      // This SEND cannot be queued
+		      eventsToHandle->addEvent(pjob_s);
+		      e->addEvent(job);
+		      break;
+		    }
+		}
+	      else
+		{
+		  pjob_s = job;
+		}
+	      previous_send = true;
 	    }
 	  else
 	    {
+	      // Still waiting to receive
 	      e->addEvent(job);
-	      if (DEBUG)
-		(*out)<<" Still waiting to receive, returned to queue value "<<job.value<<std::endl;
 	      break;
 	    }
 	}
-      
       nextEventTime = e->nextEventTime();
       if (nextEventTime < 0)
 	{

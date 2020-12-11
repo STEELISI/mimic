@@ -740,6 +740,7 @@ void processPacket(libtrace_packet_t *packet) {
       if (last_ack_ts == 0)
 	wait = 0;
 
+      bool isgap = false;
       // Generate SEND event
       if (payload_size != 0)
 	{
@@ -753,9 +754,14 @@ void processPacket(libtrace_packet_t *packet) {
 	  // Is there a gap?
 	  if (*lastseq < seq - payload_size)
 	    {
-	      //std::cout<<ts<<" There is gap between "<<seq<<" and "<<*lastseq<<std::endl;
-	      payload_size += seq - payload_size - *lastseq ;
+	      //std::cout<<ts<<" There is gap between "<<seq<<" and "<<*lastseq<<" diff "<<seq-*lastseq<<std::endl;
+	      payload_size += seq - payload_size - *lastseq;
+	      isgap = true;
+	      if (flowmap[fid].last_event_ts[src_str] > 0)
+		ts = flowmap[fid].last_event_ts[src_str];
 	    }
+	  else
+	    isgap = false;
 	  *lastseq = seq;
 	  // Always store it, but possibly print out what has been stored
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
@@ -769,12 +775,22 @@ void processPacket(libtrace_packet_t *packet) {
 	      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 	      flowmap[fid].last_event_ts[flowmap[fid].stored.src] = flowmap[fid].stored.ts;
+		
+	      //if (isgap)
+	      //	flowmap[fid].stored.ts = flowmap[fid].last_event_ts[src_str];
+	      //else
 	      flowmap[fid].stored.ts = ts;
+	      //std::cout<<"Gap1 "<<isgap<<" ts "<<flowmap[fid].stored.ts<<std::endl;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
 	    }
 	  else if (flowmap[fid].stored.bytes == 0)
 	    {
+	      //if (isgap)
+	      //flowmap[fid].stored.ts = flowmap[fid].last_event_ts[src_str];
+	      //else
+	      //flowmap[fid].stored.ts = ts;
+	      //std::cout<<"Gap2 "<<isgap<<" ts "<<flowmap[fid].stored.ts<<std::endl;
 	      flowmap[fid].stored.ts = ts;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
@@ -816,7 +832,7 @@ void processPacket(libtrace_packet_t *packet) {
 		      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
 			diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 		      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
-			       <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<","<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
+			       <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<","<<flowmap[fid].stored.ts-start_ts+SHIFT<<" "<<std::endl;
 		      // Reset what was stored
 		      flowmap[fid].last_event_ts[flowmap[fid].stored.src] = flowmap[fid].stored.ts;
 		      flowmap[fid].stored.ts = 0;

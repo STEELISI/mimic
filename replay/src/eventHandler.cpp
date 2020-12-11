@@ -883,7 +883,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 		  my_bytes += total;
 		  
 		  if (DEBUG)
-		    (*out)<<"RECV waiting now for "<<myConns[conn_id].waitingToRecv<<" on conn "<<conn_id<<std::endl;
+		    (*out)<<"RECV waiting now for "<<myConns[conn_id].waitingToRecv<<" on conn "<<conn_id<<" and waited "<<waited<<std::endl;
 		  
 		  if (myConns[conn_id].waitingToRecv == 0 ||
 		      (myConns[conn_id].waitingToRecv < 0 && waited > 0))
@@ -932,6 +932,9 @@ long int EventHandler::getNewEvents(long int conn_id, long int now)
   long int nextEventTime = e->nextEventTime();
   long int ftime = nextEventTime;
 
+  if (DEBUG)
+    (*out)<<"Getting new events for conn "<<conn_id<<std::endl;
+  
   // Check if stalled or not
   if (nextEventTime >= 0) 
     myConns[conn_id].stalled = false;
@@ -973,16 +976,18 @@ long int EventHandler::getNewEvents(long int conn_id, long int now)
 	    }
 	  else 
 	    {
+	      /*
 	      if (previous_send)
 		{
 		  eventsToHandle->addEvent(pjob_s);		  
 		  previous_send = false;
 		}
+	      */
 	      pjob_r = job;
 	    }
 	  previous_recv = true;
 	}
-      else
+      else 
 	{
 	  // There was previous recv, this SEND cannot be queued
 	  if (previous_recv)
@@ -993,26 +998,32 @@ long int EventHandler::getNewEvents(long int conn_id, long int now)
 	    }
 	  else if (myConns[conn_id].waitingToRecv <= 0)
 	    {
+	      /*
 	      if (previous_send)
 		{
-		  if (job.ms_from_last_event == 0) // Jelena: this should be thresh
+		  if (job.type == SEND && job.ms_from_last_event == 0) // Jelena: this should be thresh
 		    {
 		      pjob_s.value += job.value;
 		    }
 		  else
 		    {
 		      // Previous send is too far
-		      // This SEND cannot be queued
+		      // This SEND or CLOSE cannot be queued
 		      eventsToHandle->addEvent(pjob_s);
 		      e->addEvent(job);
 		      break;
 		    }
 		}
-	      else
+		else*/
 		{
-		  pjob_s = job;
+		  //if (job.type == SEND)
+		  // pjob_s = job;
+		  //else
+		    eventsToHandle->addEvent(job);
+		    break;
 		}
-	      previous_send = true;
+		// if (job.type == SEND)
+		//previous_send = true;
 	    }
 	  else
 	    {

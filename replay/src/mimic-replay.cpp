@@ -70,6 +70,7 @@ void print_stats(int flag)
       char myName[SHORTLEN], filename[MEDLEN];
       gethostname(myName, SHORTLEN);
       sprintf(filename, "%s/connstats.%s.txt", logDir, myName);
+      std::cout<<"Logs are at "<<filename<<std::endl;
       myfile.open(filename);
     }
   int completed = 0, total = 0;
@@ -97,7 +98,7 @@ void print_stats(int flag)
   global_events = 0;
   statsMTX.unlock();
   
-  std::cout<<"Successfully completed "<<completed<<"/"<<total<<" avg delay "<<avgd<<" ms, throughput "<<t*8/1000000000.0<<" Gbps, events "<<e<<std::endl;
+  std::cout<<"Successfully completed "<<completed<<"/"<<total<<" avg delay "<<avgd<<" ms, throughput "<<t*8/1000000000.0<<" Gbps, events "<<e<<" flag "<<flag<<std::endl;
   if (flag)
     myfile.close();
 }
@@ -229,7 +230,7 @@ int main(int argc, char* argv[]) {
     bool DEBUG = false;
 
     int c;
-    strcpy(logDir, "\tmp");
+    strcpy(logDir, "/tmp");
     while ((c = getopt (argc, argv, "e:sc:t:i:m:dn:b:E:l:h")) != -1)
     switch (c)
       {

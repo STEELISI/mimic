@@ -187,7 +187,7 @@ std::vector <std::vector <std::string>> FileWorker::loadMMapFile(void * mmapData
 	  data.push_back(record);
 	}
 	else {
-	  std::cerr << "ERROR: Not enough fields in line to process: " <<bufPart<<" size "<<record.size()<<" numfields "<<numFields<< std::endl;
+	  std::cerr << "ERROR: Not enough fields in line to process: " <<bufPart<<" size "<<record.size()<<" numfields "<<numFields<<"i="<<i<<std::endl;
 	}
 
         i = i + 1;

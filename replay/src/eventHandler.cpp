@@ -349,9 +349,10 @@ void EventHandler::dispatch(Event dispatchJob, long int now) {
   }
     
   case SRV_START: {
-    // Check if the server is already started 
+    // Check if the server is already started
     if (srvStarted.find(dispatchJob.serverString) != srvStarted.end())
       {
+	myConns[dispatchJob.conn_id].connString = dispatchJob.connString;
 	// Remember which connection we're dealing with
 	if(strToConnID.find(dispatchJob.connString) == strToConnID.end())
 	  {
@@ -491,9 +492,23 @@ void EventHandler::checkStalledConns(long int now)
       // Erase it from other threads
       if ((*connStats)[it->first].thread != -1 && (*connStats)[it->first].thread != myID)
 	{
+	  std::string connString = it->second.connString;
+
+	  if (DEBUG)
+	    (*out)<<" Conn "<<it->first<<" was served by thread "<< (*connStats)[it->first].thread<<" connstring "<<connString<<std::endl;
+	  // Also remove it from pending connections
+
+	  if(pendingConns.find(connString) != pendingConns.end() && !pendingConns[connString].empty())
+	    {
+	      if (DEBUG)
+		(*out) << "Someone else served connection "<<it->first<<" removing it from pending "<<std::endl;
+
+	      strToConnID[connString] = pendingConns[connString].front();
+	      pendingConns[connString].pop_front();
+	    }
 	  auto eit = it;
 	  it++;
-	  myConns.erase(eit);
+	  myConns.erase(eit);	  
 	}
       else
 	it++;
@@ -620,25 +635,33 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
     long int nextHeapEventTime = eventsToHandle->nextEventTime();
   
     while(nextHeapEventTime <= now && nextHeapEventTime >= 0) {
+      if (DEBUG)
+	(*out)<<"Next heap time "<<nextHeapEventTime<<" now "<<now<<std::endl;
       Event dispatchJob = eventsToHandle->nextEvent();
       long int ddelay = now - dispatchJob.origTime;
       if (ddelay > myConns[dispatchJob.conn_id].delay)
 	myConns[dispatchJob.conn_id].delay = ddelay;
 
-      if (false) //dispatchJob.conn_id > -1 && dispatchJob.origTime + myConns[dispatchJob.conn_id].delay > dispatchJob.ms_from_start) // Jelena hack extension
+      if (dispatchJob.conn_id > -1 && myConns[dispatchJob.conn_id].lastTime > 0 && dispatchJob.ms_from_last_event > 0 &&  myConns[dispatchJob.conn_id].lastTime + dispatchJob.ms_from_last_event > now)
 	{
-	  dispatchJob.ms_from_start = dispatchJob.origTime + myConns[dispatchJob.conn_id].delay;
+	  long int delay =  myConns[dispatchJob.conn_id].lastTime + dispatchJob.ms_from_last_event - now;
+	  myConns[dispatchJob.conn_id].delay = delay;
+	  dispatchJob.ms_from_start = myConns[dispatchJob.conn_id].lastTime + dispatchJob.ms_from_last_event;
 	  if (DEBUG)
-	    (*out)<<"Was trying the job "<<EventNames[dispatchJob.type]<<" orig time "<<dispatchJob.origTime<<" ms from start "<<dispatchJob.ms_from_start<<" current delay "<<myConns[dispatchJob.conn_id].delay<<" return with ms from start "<<dispatchJob.ms_from_start<<std::endl;
+	    (*out)<<"Was trying the job "<<EventNames[dispatchJob.type]<<" id "<<dispatchJob.event_id<<" orig time "<<dispatchJob.origTime<<" ms from start "<<dispatchJob.ms_from_start<<" current delay "<<delay<<" lst time "<< myConns[dispatchJob.conn_id].lastTime <<" return with ms from start "<<dispatchJob.ms_from_start<<std::endl;
 	  eventsToHandle->addEvent(dispatchJob);
+	  nextHeapEventTime = eventsToHandle->nextEventTime();
+	  now = msSinceStart(startTime);
 	  continue;
 	}
       eventsHandled++;
       
       fileEventsHandledCount++;
-      
+
+      myConns[dispatchJob.conn_id].lastTime = now;
       if (DEBUG)
 	(*out)<< "Heap Event handler GOT JOB " << EventNames[dispatchJob.type] <<" server "<<dispatchJob.serverString<<" conn "<<dispatchJob.conn_id<<" event "<<dispatchJob.event_id<<" ms from start "<<dispatchJob.ms_from_start<<" now "<<now<<" value "<<dispatchJob.value<<" events handled "<<fileEventsHandledCount<<" state "<<(*connStats)[dispatchJob.conn_id].state<<std::endl;
+
       
       dispatch(dispatchJob, now);
       nextHeapEventTime = eventsToHandle->nextEventTime();
@@ -707,7 +730,7 @@ void EventHandler::loop(std::chrono::high_resolution_clock::time_point startTime
 	      {
 		// Accepted connection
 		myConns[conn_id].state = EST;
-		(*connStats)[conn_id].state = EST;
+		(*connStats)[conn_id].state = EST;		
 		(*connStats)[conn_id].last_completed++;
 		(*connStats)[conn_id].started = now;
 		(*connStats)[conn_id].thread = myID;
@@ -931,9 +954,11 @@ long int EventHandler::getNewEvents(long int conn_id, long int now)
   EventHeap* e = &myConns[conn_id].eventQueue;
   long int nextEventTime = e->nextEventTime();
   long int ftime = nextEventTime;
+  //myConns[conn_id].lastTime = now;
 
+  
   if (DEBUG)
-    (*out)<<"Getting new events for conn "<<conn_id<<std::endl;
+    (*out)<<"Getting new events for conn "<<conn_id<<" lst time "<<myConns[conn_id].lastTime<<std::endl;
   
   // Check if stalled or not
   if (nextEventTime >= 0) 
@@ -1105,13 +1130,23 @@ long int EventHandler::acceptNewConnection(struct epoll_event *poll_e, long int 
       long int conn_id =  strToConnID[connString];
       if (DEBUG)
 	(*out) << "Got connection from "<<connString<<" currently there is conn "<<strToConnID[connString]<<" current state "<<(*connStats)[conn_id].state<<std::endl;
-      if ((*connStats)[conn_id].state >= EST && pendingConns.find(connString) != pendingConns.end() && !pendingConns[connString].empty())
+      if ((*connStats)[conn_id].state >= EST)
 	  {
-	    if (DEBUG)
-	      (*out) << "Got connection from "<<connString<<" associated it with "<< pendingConns[connString].front()<<std::endl;
-	    strToConnID[connString] = pendingConns[connString].front();
-	    conn_id = strToConnID[connString];
-	    pendingConns[connString].pop_front();
+	    if (pendingConns.find(connString) != pendingConns.end() && !pendingConns[connString].empty())
+	      {
+		if (DEBUG)
+		  (*out) << "Got connection from "<<connString<<" associated it with "<< pendingConns[connString].front()<<std::endl;
+		strToConnID[connString] = pendingConns[connString].front();
+		conn_id = strToConnID[connString];
+		pendingConns[connString].pop_front();
+	      }
+	    else
+	      {
+		if (DEBUG)
+		  (*out) << "Got connection from "<<connString<<" but there is no conn id so making it orphan"<<std::endl;
+		orphanConn[connString] = newSockfd;
+		return -2;
+	      }
 	  }
       if (DEBUG)
 	(*out)<<"Got connection from "<<connString<<" conn "<<strToConnID[connString]<<std::endl;

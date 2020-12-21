@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <libtrace.h>
+#include <signal.h>
 
 #include <map>
 #include <vector>
@@ -42,6 +43,10 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
+#define JUMBO_MAX 9000
+
+long int flows = 0, sflows = 0, cflows = 0;
 
 // Connection states
 enum states{OPEN, HALFCLOSED, CLOSED, TBD};
@@ -68,28 +73,49 @@ int conn_id_counter = 0;
 // If we are rewriting IPs then we have to
 // rewrite ports too. Start from this port number
 // and cycle through.
-int nextport=1024;
-std::unordered_set<int> portsInUse;
+std::unordered_map <std::string, int> nextport;
+std::unordered_map <std::string, std::unordered_set <int>> portsInUse;
+std::unordered_map <int, int> portsToChange;
+std::unordered_set <int> reservedPorts;
 
-int checkUsed(int port)
+
+int checkUsed(std::string address, int port)
 {
-  if (portsInUse.find(port) == portsInUse.end() && port != 0)
+  if (portsInUse.find(address) == portsInUse.end())
     {
-      portsInUse.insert(port);
+      std::unordered_set <int> myset;
+      portsInUse[address] = myset;
       return port;
     }
-  if (nextport > 65535)
-    nextport = 1024;
-  
-  while (portsInUse.find(nextport) != portsInUse.end())
+  if (portsInUse[address].find(port) == portsInUse[address].end() && port != 0 && portsToChange.find(port) == portsToChange.end() && reservedPorts.find(port) != reservedPorts.end())
     {
-      nextport++;
+      portsInUse[address].insert(port);
+      return port;
     }
-  // Nothing was free at the moment
-  if (nextport > 65535)
-    return 0;
-  portsInUse.insert(nextport);
-  return nextport;
+
+  if (nextport.find(address) == nextport.end())
+      nextport[address] = 1024;
+    
+  if (nextport[address] > 65535)
+    nextport[address] = 1024;
+
+  int curport = nextport[address];
+  while (portsInUse[address].find(nextport[address]) != portsInUse[address].end() || portsToChange.find(nextport[address]) != portsToChange.end() || reservedPorts.find(nextport[address]) != reservedPorts.end())
+    {
+      nextport[address]++;
+      // Nothing was free at the moment
+      if (nextport[address] > 65535)
+	nextport[address] = 1024;
+      if (curport == nextport[address])
+	{
+	  std::cout<<"Ran out of ports for "<<address<<std::endl;
+	  return 0;
+	}
+    }
+  portsInUse[address].insert(nextport[address]);
+  //std::cout<<" Inserted "<<address<<" port "<<nextport[address]<<std::endl;
+    
+  return nextport[address];
 }
 
 
@@ -99,7 +125,6 @@ double start_ts = 0;
 bool orig = true;
 std::string client, server;
 double gap;
-std::unordered_map <int, int> portsToChange;
 
 
 // When a flow is inactive, close it after this
@@ -133,7 +158,7 @@ public:
 };
 
 
-bool lessthan(avgpair a,  avgpair b)
+bool lessthanpair(avgpair a,  avgpair b)
 {
   return a.count < b.count;
 }
@@ -153,6 +178,27 @@ void hostinsert(uint32_t ip)
     }		    
   host_stats[ip].Mbytes = 0;
   host_stats[ip].conns = 0;
+}
+
+// Check if a is less than b, assuming they are both seq or ack numbers so they can wrap around
+// and assuming that a came before b on the same flow
+ bool lessthan(uint32_t a, uint32_t b)
+ {   
+   if (a < b)
+     return true;
+   if (a > b && a > UINT_MAX/2 && b < UINT_MAX/2 && ((long int) b - a < JUMBO_MAX))
+       return true;
+   return false;
+ }
+
+// Calculate diff between two seq or ack numbers but take into account
+// possible wraparound
+uint32_t difference(uint32_t a, uint32_t b)
+{
+  long int diff = (long int) b - a;
+  if (diff < 0 && lessthan(a, b))
+    diff += UINT_MAX;
+  return (uint32_t) diff;
 }
 
 // Event structure helps us identify ADUs
@@ -237,6 +283,14 @@ public:
 
 };
 
+std::ostream& operator<<(std::ostream& os, const flow_id& fid)
+{
+  std::string src_str = inet_ntoa(*(struct in_addr *)&(fid.srcIP));
+  std::string dst_str = inet_ntoa(*(struct in_addr *)&(fid.dstIP));
+  os <<" host "<< src_str << " and port " <<fid.sport<<" and host "<<dst_str<<" and port "<<fid.dport;
+  return os;
+}
+
 class bunch
 {
 
@@ -259,14 +313,8 @@ public:
 class flow_stats
 {
 public:
-  std::map <uint32_t, packet> src_seqs;
-  std::map <uint32_t, packet> dst_seqs;
-  std::map <uint32_t, packet> src_acks;
-  std::map <uint32_t, packet> dst_acks;
-  std::map <uint32_t, int> src_IDs;
-  std::map <uint32_t, int> dst_IDs;
   std::map <std::string, double> last_event_ts;
-  
+  double start_ts;
   long int event_id;
   uint32_t src_seq, dst_seq, src_ack, dst_ack, src_lastack, dst_lastack, src_lastseq, dst_lastseq;
   long int src_toack, dst_toack, src_sent, dst_sent, src_waited, dst_waited;
@@ -289,19 +337,11 @@ public:
     conn_str = "";
     state = OPEN;
     last_ts = 0;
-    conn_id = conn_id_counter++;
   }
 
   ~flow_stats()
   {
-    src_seqs.clear();
-    src_acks.clear();
-    dst_seqs.clear();
-    dst_acks.clear();
-
-    src_IDs.clear();
-    dst_IDs.clear();
-
+    last_event_ts.clear();
   }
 
   flow_stats& operator=(const flow_stats& f)
@@ -310,12 +350,6 @@ public:
       {
 	src_str = f.src_str;
 	dst_str = f.dst_str;
-	src_IDs = f.src_IDs;
-	dst_IDs = f.dst_IDs;
-	src_seqs = f.src_seqs;
-	dst_seqs = f.dst_seqs;
-	src_acks = f.src_acks;
-	dst_acks = f.dst_acks;
 	stored = f.stored;
 	event_id = f.event_id;
 	src_seq = f.src_seq;
@@ -349,6 +383,7 @@ std::map <flow_id, double> blocklist;
 
 // This function updates flow stats (e.g., current seq number)
 // and returns 1 if the packet is a duplicate, 0 otherwise
+/*
 int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 		   uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id,
 		   double ts, int syn, int fin, int psh)
@@ -447,30 +482,53 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
     }
   return duplicate;
 }
+*/
+
+int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
+		   uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id,
+		   double ts, int syn, int fin, int psh)
+{
+  if (src == fid.srcIP && lessthan(flowmap[fid].src_lastseq, sseq))
+    return 0;
+  if (src == fid.dstIP && lessthan(flowmap[fid].dst_lastseq, sseq))
+    return 0;
+  return 1;
+}
 
 // Start the flow, rewrite ports if needed
 bool startFlow(flow_id fid, double ts, std::string src_str, std::string dst_str, uint32_t seq,
 	       uint32_t ack, int payload_size, bool orig)
 {
   flow_stats FS;
+  flows++;
+  sflows++;
   uint16_t src_port = fid.sport;
   uint16_t dst_port = fid.dport;
   flowmap[fid] = FS;
+  flowmap[fid].conn_id = conn_id_counter++;
+  flowmap[fid].start_ts = ts;
   flowmap[fid].src_str = src_str;
   flowmap[fid].dst_str = dst_str;
   flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq;
   flowmap[fid].dst_lastseq = ack;
   flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
   flowmap[fid].src_lastack = ack;
-  flowmap[fid].dst_lastack = seq - payload_size;
-
+  long int diff = (long int) seq - payload_size;
+  if (diff >= 0)
+    flowmap[fid].dst_lastack = diff;
+  else
+    flowmap[fid].dst_lastack = UINT_MAX + diff;
+    
   if (src_port >= dst_port)
     {
       if (!orig)
 	{
-	  src_port = checkUsed(src_port);
+	  src_port = checkUsed(src_str, src_port);
 	  if (src_port == 0)
-	    return false;
+	    {
+	      std::cout<<"Ran out of ports for fid "<<fid<<" for source "<<fid.srcIP<<"\n";
+	      exit(1);
+	    }
 	}
       flowmap[fid].conn_str = "CONN,"+std::to_string(flowmap[fid].conn_id)+","+src_str+
 	","+std::to_string(src_port)+",->,"+dst_str+","+std::to_string(dst_port)+","
@@ -480,9 +538,12 @@ bool startFlow(flow_id fid, double ts, std::string src_str, std::string dst_str,
     {
       if (!orig)
 	{
-	  dst_port = checkUsed(dst_port);
+	  dst_port = checkUsed(src_str, dst_port);
 	  if (dst_port == 0)
-	    return false;
+	    {
+	      std::cout<<"Ran out of ports for fid "<<fid<<" for source "<<fid.dstIP<<"\n";
+	      exit(1);
+	    }
 	}
       flowmap[fid].conn_str = "CONN,"+std::to_string(flowmap[fid].conn_id)+","+
 	dst_str+","+std::to_string(dst_port)+",->,"+src_str+","+std::to_string(src_port)+","
@@ -517,7 +578,7 @@ void closeFlow(flow_id fid)
 	  if (flowmap[fid].event_id == 0)
 	    std::cout<<flowmap[fid].conn_str<<std::endl;
 	  double diff = 0;
-	  if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+	  if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end() && flowmap[fid].last_event_ts[flowmap[fid].stored.src] > 0)
 	    diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 	  std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 		   <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<"0,"<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
@@ -530,20 +591,44 @@ void closeFlow(flow_id fid)
 	std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",WAIT,"<<flowmap[fid].dst_toack<<",0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT<<std::endl;
       std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].dst_str<<",CLOSE,0,0.0,"<<flowmap[fid].last_ts-start_ts+SHIFT+THRESH<<std::endl;
     }
-  flowmap.erase(fid);
-  flowmap.erase(rid);
+
+  //std::cout<<flowmap[fid].last_ts-start_ts<<" fid "<<fid<<" erased ports "<<fid.sport<<" and "<<fid.dport<<" conn "<<flowmap[fid].conn_id<<std::endl;
 
   // Free up ports
-  portsInUse.erase(fid.sport);
-  portsInUse.erase(fid.dport);			      
+  portsInUse[flowmap[fid].src_str].erase(fid.sport);
+  //std::cout<<"Erased "<<fid.srcIP<<" port "<<fid.sport<<std::endl;
+  portsInUse[flowmap[fid].dst_str].erase(fid.dport);
+  //std::cout<<"Erased "<<fid.dstIP<<" port "<<fid.dport<<std::endl;
+
+  flowmap.erase(fid);
+  flowmap.erase(rid);
+  flows--;
+  cflows++;
+  
+
+}
+
+
+double timenow = 0;
+
+// Call this handler on CTRL-C                                                                                                  
+void signal_callback_handler(int signum) {
+  for (auto fit = flowmap.begin(); fit != flowmap.end(); fit++)
+    {
+      std::cout<<"Flow "<<fit->first<<" start "<<fit->second.start_ts<<" last time "<<fit->second.last_ts<<" time now "<<timenow<<" events "<<fit->second.event_id<<std::endl;
+    }
+  exit(signum);
 }
 
 // Every so often go through all the flows
 // and close those that are idle
 void cleanFlows(double ts, bool force)
 {
+  //std::cout<<"Flows "<<flows<<" started "<<sflows<<" ended "<<cflows<<std::endl;
+  sflows = cflows = 0;
   for (auto fit = flowmap.begin(); fit != flowmap.end();)
     {
+      double diff = ts - fit->second.last_ts;
       if (fit->second.state == TBD || ts-fit->second.last_ts > DELTHRESH || force)
 	{
 	  auto it = fit;
@@ -577,18 +662,24 @@ void processPacket(libtrace_packet_t *packet) {
   
   uint16_t l3_type;
   int src_port, dst_port;
-  
+
+  // Register a signal handler
+  signal(SIGINT, signal_callback_handler);
+  signal(SIGPIPE, SIG_IGN);
+
   ip = (libtrace_ip_t *)trace_get_layer3(packet, &l3_type, NULL);
   if (l3_type != 0x0800) return;
   if (ip == NULL) return;
   
   tcp = trace_get_tcp(packet);
   ts = trace_get_seconds(packet);
+
+  timenow = ts;
   if (start_ts == 0)
     start_ts = ts;
   if (ts - old_ts > 1)
     {
-      cleanFlows(ts-start_ts, false);
+      cleanFlows(ts, false);
       old_ts = ts;
     }
   id = ip->ip_id;
@@ -623,7 +714,8 @@ void processPacket(libtrace_packet_t *packet) {
       }
     src_port = trace_get_source_port(packet);
     dst_port = trace_get_destination_port(packet);
-
+    //std::cout<<"time "<<ts<<" from "<<src_str<<":"<<src_port<<"->"<<dst_str<<":"<<dst_port<<std::endl;
+    
     // We will change some ports that are specified in a
     // file ports.csv. These are reserved ports on replay
     // machines, e.g., 22
@@ -637,10 +729,19 @@ void processPacket(libtrace_packet_t *packet) {
     flow_id rid(dst, src, dst_port, src_port);
 
     // Seq and ack number
-    uint32_t seq = ntohl(tcp->seq)+payload_size;
-    uint32_t ack = ntohl(tcp->ack_seq) - 1;
+    uint32_t oseq = ntohl(tcp->seq);
+    uint32_t seq = oseq;
+    if ((long int) ntohl(tcp->seq)+payload_size > UINT_MAX)
+      seq = ntohl(tcp->seq)+payload_size;
+    else
+      seq = (long int) ntohl(tcp->seq)+payload_size - UINT_MAX;
+    
+    uint32_t ack;
+    if (ntohl(tcp->ack_seq) != 0)
+      ack = ntohl(tcp->ack_seq) - 1;
+    else
+      ack = UINT_MAX;
 
-    //std::cout<<"Ts "<<ts<<" seq "<<seq-payload_size<<std::endl;
     
     // A new flow
     if (flowmap.find(did)==flowmap.end() && flowmap.find(rid)==flowmap.end())
@@ -653,6 +754,7 @@ void processPacket(libtrace_packet_t *packet) {
 	    if(blocklist.find(did) != blocklist.end())
 	      return;
 	    bool started = startFlow(did, ts, src_str, dst_str, seq, ack, payload_size, orig);
+	    //std::cout<<ts-start_ts<<"Started flow, sport "<<did.sport<<" conn "<<flowmap[did].conn_id<<std::endl;
 	    if (!started)
 	      return;
 	  }	      
@@ -698,12 +800,15 @@ void processPacket(libtrace_packet_t *packet) {
 	last_ack_ts = flowmap[fid].src_ack_ts;
 	
 	// If this is not a hardware duplicate
-	if (duplicate < 2 && ack > flowmap[fid].src_ack)
+	if (duplicate < 2 && lessthan(flowmap[fid].src_lastack, ack))
 	  {
 	    if (payload_size == 0)
 	      {
-		acked = ack - flowmap[fid].src_lastack;
-		flowmap[fid].src_lastack = ack;
+		acked = difference(flowmap[fid].src_lastack, ack);
+		if (acked > flowmap[fid].src_toack)
+		  acked = flowmap[fid].src_toack;
+		if (lessthan(flowmap[fid].src_lastack, ack))
+		  flowmap[fid].src_lastack = ack;
 	      }
 	    flowmap[fid].src_ack = ack;
 	    flowmap[fid].src_ack_ts = ts;
@@ -717,12 +822,15 @@ void processPacket(libtrace_packet_t *packet) {
 	
 	last_ack_ts = flowmap[fid].dst_ack_ts;
 	// If this is not a hardware duplicate 
-	if (duplicate < 2 && ack > flowmap[fid].dst_ack)
+	if (duplicate < 2 && lessthan(flowmap[fid].dst_lastack,ack))
 	  {
 	    if (payload_size == 0)
 	      {
-		acked = ack - flowmap[fid].dst_lastack;
-		flowmap[fid].dst_lastack = ack;
+		acked = difference(flowmap[fid].dst_lastack, ack);
+		if (acked > flowmap[fid].dst_toack)
+		  acked = flowmap[fid].dst_toack;
+		if (lessthan(flowmap[fid].dst_lastack, ack))
+		  flowmap[fid].dst_lastack = ack;
 	      }
 	    flowmap[fid].dst_ack = ack;
 	    flowmap[fid].dst_ack_ts = ts;
@@ -752,10 +860,11 @@ void processPacket(libtrace_packet_t *packet) {
 	  else
 	    lastseq = &flowmap[fid].dst_lastseq;
 	  // Is there a gap?
-	  if (*lastseq < seq - payload_size)
+	  if (lessthan(*lastseq, oseq))
 	    {
 	      //std::cout<<ts<<" There is gap between "<<seq<<" and "<<*lastseq<<" diff "<<seq-*lastseq<<std::endl;
-	      payload_size += seq - payload_size - *lastseq;
+	      long int diff = difference(*lastseq, oseq);
+	      payload_size += diff;
 	      isgap = true;
 	      if (flowmap[fid].last_event_ts[src_str] > 0)
 		ts = flowmap[fid].last_event_ts[src_str];
@@ -764,33 +873,25 @@ void processPacket(libtrace_packet_t *packet) {
 	    isgap = false;
 	  *lastseq = seq;
 	  // Always store it, but possibly print out what has been stored
+
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
 	    {
 	      // Could be the first record, so print conn std::string before it
 	      if (flowmap[fid].event_id == 0)
 		std::cout<<flowmap[fid].conn_str<<std::endl;
 	      double diff = 0;
-	      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+	      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end() && flowmap[fid].last_event_ts[flowmap[fid].stored.src] > 0)
 		diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 	      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 		  <<",SEND,"<<flowmap[fid].stored.bytes<<",0,"<<std::fixed<<flowmap[fid].stored.ts-start_ts+SHIFT<<std::endl;
 	      flowmap[fid].last_event_ts[flowmap[fid].stored.src] = flowmap[fid].stored.ts;
 		
-	      //if (isgap)
-	      //	flowmap[fid].stored.ts = flowmap[fid].last_event_ts[src_str];
-	      //else
 	      flowmap[fid].stored.ts = ts;
-	      //std::cout<<"Gap1 "<<isgap<<" ts "<<flowmap[fid].stored.ts<<std::endl;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
 	    }
 	  else if (flowmap[fid].stored.bytes == 0)
 	    {
-	      //if (isgap)
-	      //flowmap[fid].stored.ts = flowmap[fid].last_event_ts[src_str];
-	      //else
-	      //flowmap[fid].stored.ts = ts;
-	      //std::cout<<"Gap2 "<<isgap<<" ts "<<flowmap[fid].stored.ts<<std::endl;
 	      flowmap[fid].stored.ts = ts;
 	      flowmap[fid].stored.bytes = payload_size;
 	      flowmap[fid].stored.src = src_str;
@@ -829,7 +930,7 @@ void processPacket(libtrace_packet_t *packet) {
 		      if (flowmap[fid].event_id == 0)
 			std::cout<<flowmap[fid].conn_str<<std::endl;
 		      double diff = 0;
-		      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end())
+		      if (flowmap[fid].last_event_ts.find(flowmap[fid].stored.src) != flowmap[fid].last_event_ts.end() && flowmap[fid].last_event_ts[flowmap[fid].stored.src] > 0)
 			diff =  flowmap[fid].stored.ts - flowmap[fid].last_event_ts[flowmap[fid].stored.src];
 		      std::cout<<"EVENT,"<<flowmap[fid].conn_id<<","<<flowmap[fid].event_id++<<","<<flowmap[fid].stored.src
 			       <<",SEND,"<<flowmap[fid].stored.bytes<<","<<diff<<","<<flowmap[fid].stored.ts-start_ts+SHIFT<<" "<<std::endl;
@@ -879,9 +980,10 @@ void printHelp(std::string prog)
     "\tFlag -h prints the help message.\n\n"
 
     "\tFlag -a followed by GAP, which is a number in decimal notation, denoting that consecutive\n"
-    "\tSEND events by the same IP within time GAP should be aggregated into one\n\n";
+    "\tSEND events by the same IP within time GAP seconds should be aggregated into one\n\n";
 }
-
+ 
+ 
 // Main program
 int main(int argc, char *argv[])
 {
@@ -937,7 +1039,10 @@ int main(int argc, char *argv[])
   int a, b;
   
   while(ports >> a >> b)
-    portsToChange[a] = b;
+    {
+      portsToChange[a] = b;
+      reservedPorts.insert(b);
+    }
   
   ports.close();
 
@@ -996,7 +1101,7 @@ int main(int argc, char *argv[])
 	count += it->second.pairs[i].count;
 	sortedcounts.push_back(it->second.pairs[i]);
       }
-    sort(sortedcounts.begin(), sortedcounts.end(), lessthan);
+    sort(sortedcounts.begin(), sortedcounts.end(), lessthanpair);
     total = 0;
     sum = 0;
     

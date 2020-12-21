@@ -41,13 +41,15 @@
 // Data we store about connections
 struct connData
 {
-  std::string serverString= "";
+  std::string connString = "";
+  std::string serverString = "";
   int sockfd = -1;
   long int waitingToRecv = 0;
   long int waitingToSend = 0;
   long int delay = 0;
   long int lastdelay = 0;
   long int samples = 0;
+  long int lastTime = 0;
   long int lastPlannedEvent = 0;
   long int origStart = 0;
   long int origTime = 0;
@@ -94,6 +96,7 @@ class EventHandler {
   std::map<std::string, long int> srvStarted;
   std::map<std::string, long int> orphanConn;
   std::map<long int, struct stats>* connStats;
+ 
   std::map<std::string,std::list<long int>> pendingConns;
 
   // Synchronization with other peer

@@ -191,6 +191,17 @@ void hostinsert(uint32_t ip)
    return false;
  }
 
+// Check if a is less than or equal to b, assuming they are both seq or ack numbers so they can wrap around
+// and assuming that a came before b on the same flow
+ bool lessoreq(uint32_t a, uint32_t b)
+ {   
+   if (a <= b)
+     return true;
+   if (a > b && a > UINT_MAX/2 && b < UINT_MAX/2 && ((long int) b - a < JUMBO_MAX))
+     return true;
+   return false;
+ }
+
 // Calculate diff between two seq or ack numbers but take into account
 // possible wraparound
 uint32_t difference(uint32_t a, uint32_t b)
@@ -488,9 +499,10 @@ int checkDuplicate(flow_id fid, int dir, uint32_t src, uint32_t dst,
 		   uint32_t sseq, uint32_t eseq, uint32_t ack, int16_t id,
 		   double ts, int syn, int fin, int psh)
 {
-  if (src == fid.srcIP && lessthan(flowmap[fid].src_lastseq, sseq))
+  //std::cout<<"Check duplicate "<<flowmap[fid].src_lastseq<<" against "<<eseq<<std::endl;
+  if (src == fid.srcIP && lessthan(flowmap[fid].src_lastseq, eseq))
     return 0;
-  if (src == fid.dstIP && lessthan(flowmap[fid].dst_lastseq, sseq))
+  if (src == fid.dstIP && lessthan(flowmap[fid].dst_lastseq, eseq))
     return 0;
   return 1;
 }
@@ -509,7 +521,7 @@ bool startFlow(flow_id fid, double ts, std::string src_str, std::string dst_str,
   flowmap[fid].start_ts = ts;
   flowmap[fid].src_str = src_str;
   flowmap[fid].dst_str = dst_str;
-  flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq;
+  flowmap[fid].src_seq = flowmap[fid].src_lastseq = seq-1;
   flowmap[fid].dst_lastseq = ack;
   flowmap[fid].src_ack = flowmap[fid].src_lastack = ack;
   flowmap[fid].src_lastack = ack;
@@ -566,6 +578,7 @@ void handleState(flow_id fid, libtrace_tcp_t * tcp)
 // Close the flow, generate waits for any outstanding data, free the client port
 void closeFlow(flow_id fid)
 {
+  //std::cout<<"Closing flow\n";
   // Reverse ID
   flow_id rid(fid.dstIP, fid.srcIP, fid.dport,fid.sport);
 
@@ -714,7 +727,9 @@ void processPacket(libtrace_packet_t *packet) {
       }
     src_port = trace_get_source_port(packet);
     dst_port = trace_get_destination_port(packet);
-    //std::cout<<"time "<<ts<<" from "<<src_str<<":"<<src_port<<"->"<<dst_str<<":"<<dst_port<<std::endl;
+    payload_size = trace_get_payload_length(packet);
+    //std::cout.setf(std::ios::fixed);
+    //std::cout<<"Time "<<ts<<" flow "<<src_str<<":"<<src_port<<"->"<<dst_str<<":"<<dst_port<<" payload "<<payload_size<<std::endl;
     
     // We will change some ports that are specified in a
     // file ports.csv. These are reserved ports on replay
@@ -723,7 +738,7 @@ void processPacket(libtrace_packet_t *packet) {
       src_port = portsToChange[src_port];
     if (portsToChange.find(dst_port) != portsToChange.end())
       dst_port = portsToChange[dst_port];
-    payload_size = trace_get_payload_length(packet);
+
     
     flow_id did(src, dst, src_port, dst_port);
     flow_id rid(dst, src, dst_port, src_port);
@@ -732,9 +747,9 @@ void processPacket(libtrace_packet_t *packet) {
     uint32_t oseq = ntohl(tcp->seq);
     uint32_t seq = oseq;
     if ((long int) ntohl(tcp->seq)+payload_size > UINT_MAX)
-      seq = ntohl(tcp->seq)+payload_size;
-    else
       seq = (long int) ntohl(tcp->seq)+payload_size - UINT_MAX;
+    else
+      seq = ntohl(tcp->seq)+payload_size;
     
     uint32_t ack;
     if (ntohl(tcp->ack_seq) != 0)
@@ -742,7 +757,10 @@ void processPacket(libtrace_packet_t *packet) {
     else
       ack = UINT_MAX;
 
-    
+
+    //std::cout.setf(std::ios::fixed);
+    //std::cout<<"oseq "<<oseq<<" seq "<<seq<<" ack "<<ack<<std::endl;
+
     // A new flow
     if (flowmap.find(did)==flowmap.end() && flowmap.find(rid)==flowmap.end())
       {
@@ -754,7 +772,7 @@ void processPacket(libtrace_packet_t *packet) {
 	    if(blocklist.find(did) != blocklist.end())
 	      return;
 	    bool started = startFlow(did, ts, src_str, dst_str, seq, ack, payload_size, orig);
-	    //std::cout<<ts-start_ts<<"Started flow, sport "<<did.sport<<" conn "<<flowmap[did].conn_id<<std::endl;
+	    //std::cout<<ts-start_ts<<" Started flow, sport "<<did.sport<<" conn "<<flowmap[did].conn_id<<std::endl;
 	    if (!started)
 	      return;
 	  }	      
@@ -795,10 +813,11 @@ void processPacket(libtrace_packet_t *packet) {
     int duplicate = 0;
     if (src == fid.srcIP)
       {
-	duplicate = checkDuplicate(fid, 0, src, dst, seq-payload_size, seq, ack, id, ts,
+	duplicate = checkDuplicate(fid, 0, src, dst, oseq, seq, ack, id, ts,
 				   tcp->syn, tcp->fin, payload_size);
 	last_ack_ts = flowmap[fid].src_ack_ts;
-	
+
+	//std::cout<<" Duplicate "<<duplicate<<" last ack ts "<<last_ack_ts<<" current ack "<<ack<<std::endl;
 	// If this is not a hardware duplicate
 	if (duplicate < 2 && lessthan(flowmap[fid].src_lastack, ack))
 	  {
@@ -817,7 +836,7 @@ void processPacket(libtrace_packet_t *packet) {
       }
     else
       {
-	duplicate = checkDuplicate(fid, 0, dst, src, seq-payload_size, seq, ack, id, ts,
+	duplicate = checkDuplicate(fid, 0, dst, src, oseq, seq, ack, id, ts,
 				   tcp->syn, tcp->fin, payload_size);
 	
 	last_ack_ts = flowmap[fid].dst_ack_ts;
@@ -873,7 +892,8 @@ void processPacket(libtrace_packet_t *packet) {
 	    isgap = false;
 	  *lastseq = seq;
 	  // Always store it, but possibly print out what has been stored
-
+	  //std::cout.setf(std::ios::fixed);
+	  //std::cout<<ts<<" stored bytes "<<flowmap[fid].stored.bytes<<" src "<<flowmap[fid].stored.src<<" src str"<<src_str<<" ts "<<(double)ts<<" stored ts "<<(double)flowmap[fid].stored.ts<<" diff "<<ts-flowmap[fid].stored.ts<<" gap"<<gap<<std::endl;
 	  if (flowmap[fid].stored.bytes > 0 && (flowmap[fid].stored.src != src_str || (flowmap[fid].stored.src == src_str && ts - flowmap[fid].stored.ts >= gap)))
 	    {
 	      // Could be the first record, so print conn std::string before it
@@ -897,7 +917,9 @@ void processPacket(libtrace_packet_t *packet) {
 	      flowmap[fid].stored.src = src_str;
 	    }
 	  else
-	    flowmap[fid].stored.bytes += payload_size;
+	    {
+	      flowmap[fid].stored.bytes += payload_size;
+	    }
 
 	  // Adjust ack numbers
 	  if (src == fid.srcIP)
